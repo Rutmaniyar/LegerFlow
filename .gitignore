@@ -17,6 +17,9 @@
 /graphify-out/
 /.claude/
 /.codex/
+/AGENTS.md
+/CLAUDE.md
+/docs/
 
 # Ad-hoc verification screenshots/snapshots dropped at repo root
 /*.png

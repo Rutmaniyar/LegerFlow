@@ -37,7 +37,13 @@ function base_url(string $path = ''): string
 function asset(string $path): string
 {
     $prefix = defined('PUBLIC_URL_PREFIX') ? PUBLIC_URL_PREFIX : '';
-    return rtrim($prefix, '/') . '/assets/' . ltrim($path, '/');
+    $relative = ltrim($path, '/');
+    $url = rtrim($prefix, '/') . '/assets/' . $relative;
+
+    $file = (defined('PUBLIC_PATH') ? PUBLIC_PATH : '') . '/assets/' . $relative;
+    $version = is_file($file) ? filemtime($file) : false;
+
+    return $version !== false ? $url . '?v=' . $version : $url;
 }
 
 function upload_url(string $path): string

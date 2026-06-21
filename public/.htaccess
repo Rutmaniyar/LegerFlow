@@ -8,10 +8,10 @@ Options -Indexes
 </IfModule>
 
 <IfModule mod_headers.c>
-  Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
-  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # CSP, HSTS, X-Frame-Options, Referrer-Policy, and Permissions-Policy are set per-request by
+  # App::sendSecurityHeaders() for every PHP-rendered page. Setting them again here would add a
+  # second, conflicting header on those responses - browsers enforce the intersection of multiple
+  # CSP headers, which silently strips the 'unsafe-inline' allowance PHP grants for inline
+  # styles/scripts. Only set headers here that matter for static files PHP never touches.
   Header always set X-Content-Type-Options "nosniff"
-  Header always set X-Frame-Options "SAMEORIGIN"
-  Header always set Referrer-Policy "strict-origin-when-cross-origin"
-  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 </IfModule>
