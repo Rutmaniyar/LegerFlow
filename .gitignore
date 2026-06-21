@@ -6,6 +6,7 @@
 /storage/uploads/*
 /storage/backups/*
 /public/uploads/*
+!/public/uploads/.htaccess
 /node_modules/
 /vendor/
 .env
