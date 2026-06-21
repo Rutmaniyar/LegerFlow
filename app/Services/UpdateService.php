@@ -6,7 +6,7 @@ namespace App\Services;
 
 final class UpdateService
 {
-    private const REPO = 'Rutmaniyar/Invoice_System';
+    private const REPO = 'Rutmaniyar/LegerFlow';
     private const API_URL = 'https://api.github.com/repos/' . self::REPO . '/releases/latest';
     private const TRUSTED_PREFIXES = [
         'https://github.com/' . self::REPO . '/',
@@ -70,23 +70,56 @@ final class UpdateService
             throw new \RuntimeException('The PHP zip extension is required to apply updates.');
         }
 
+        if (!is_writable(ROOT_PATH)) {
+            throw new \RuntimeException('The application directory is not writable by the web server. Fix file/folder permissions and try again.');
+        }
+
         @set_time_limit(0);
 
         $tmpZip = sys_get_temp_dir() . '/ledgerflow-update-' . bin2hex(random_bytes(8)) . '.zip';
 
         try {
             $content = $this->httpGet($downloadUrl, '');
+            if (strlen($content) < 1024) {
+                throw new \RuntimeException('The downloaded update package looks incomplete or corrupted. Try again later.');
+            }
             file_put_contents($tmpZip, $content, LOCK_EX);
 
             $backupPath = $this->backupCurrentInstallation();
-            $this->extractOver($tmpZip);
-            (new InstallerService())->runMigrations(app()->db());
+
+            try {
+                $this->extractOver($tmpZip);
+                (new InstallerService())->runMigrations(app()->db());
+            } catch (\Throwable $exception) {
+                $this->restoreFromBackup($backupPath);
+                throw new \RuntimeException(
+                    'Update failed and the previous version was restored: ' . $exception->getMessage(),
+                    previous: $exception
+                );
+            }
 
             return $backupPath;
         } finally {
             if (is_file($tmpZip)) {
                 unlink($tmpZip);
             }
+        }
+    }
+
+    private function restoreFromBackup(string $backupPath): void
+    {
+        if (!is_file($backupPath)) {
+            return;
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($backupPath) === true) {
+            $zip->extractTo(ROOT_PATH);
+            $zip->close();
+        }
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
         }
     }
 
@@ -153,13 +186,15 @@ final class UpdateService
     private function backupCurrentInstallation(): string
     {
         $backupDir = STORAGE_PATH . '/backups';
-        if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
+        if (!is_dir($backupDir) && !mkdir($backupDir, 0755, true) && !is_dir($backupDir)) {
+            throw new \RuntimeException('Could not create the backup directory. Check that storage/backups is writable.');
         }
 
         $backupPath = $backupDir . '/pre-update-' . $this->currentVersion() . '-' . date('Ymd-His') . '.zip';
         $zip = new \ZipArchive();
-        $zip->open($backupPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        if ($zip->open($backupPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('Could not create a backup of the current installation. Refusing to update without one - check that storage/backups is writable.');
+        }
 
         foreach ($this->walk(ROOT_PATH) as $relative => $absolute) {
             if (!is_dir($absolute)) {
@@ -167,7 +202,13 @@ final class UpdateService
             }
         }
 
-        $zip->close();
+        if (!$zip->close()) {
+            throw new \RuntimeException('Could not finalize the backup archive. Refusing to update without a valid backup.');
+        }
+
+        if (!is_file($backupPath) || filesize($backupPath) === 0) {
+            throw new \RuntimeException('The backup archive was not written correctly. Refusing to update without a valid backup.');
+        }
 
         return $backupPath;
     }
@@ -180,8 +221,16 @@ final class UpdateService
         }
 
         $extractTo = STORAGE_PATH . '/cache/update-' . bin2hex(random_bytes(6));
-        mkdir($extractTo, 0755, true);
-        $zip->extractTo($extractTo);
+        if (!mkdir($extractTo, 0755, true) && !is_dir($extractTo)) {
+            $zip->close();
+            throw new \RuntimeException('Could not create a temporary directory to unpack the update.');
+        }
+
+        if (!$zip->extractTo($extractTo)) {
+            $zip->close();
+            $this->removeDirectory($extractTo);
+            throw new \RuntimeException('Could not unpack the downloaded update package.');
+        }
         $zip->close();
 
         $entries = array_values(array_diff(scandir($extractTo) ?: [], ['.', '..']));
@@ -189,22 +238,40 @@ final class UpdateService
             ? $extractTo . '/' . $entries[0]
             : $extractTo;
 
-        foreach ($this->walk($sourceRoot) as $relative => $absolute) {
-            $target = ROOT_PATH . '/' . $relative;
-            if (is_dir($absolute)) {
-                if (!is_dir($target)) {
-                    mkdir($target, 0755, true);
-                }
-                continue;
-            }
+        $filesWritten = 0;
 
-            if (!is_dir(dirname($target))) {
-                mkdir(dirname($target), 0755, true);
+        try {
+            foreach ($this->walk($sourceRoot) as $relative => $absolute) {
+                $target = ROOT_PATH . '/' . $relative;
+                if (is_dir($absolute)) {
+                    if (!is_dir($target) && !mkdir($target, 0755, true) && !is_dir($target)) {
+                        throw new \RuntimeException("Could not create the '{$relative}' directory. Check file permissions for the web server user.");
+                    }
+                    continue;
+                }
+
+                $targetDir = dirname($target);
+                if (!is_dir($targetDir) && !mkdir($targetDir, 0755, true) && !is_dir($targetDir)) {
+                    throw new \RuntimeException("Could not create the directory for '{$relative}'. Check file permissions for the web server user.");
+                }
+
+                if (!copy($absolute, $target)) {
+                    throw new \RuntimeException("Could not write '{$relative}'. Check that the web server user owns and can write to this file/directory.");
+                }
+
+                $filesWritten++;
             }
-            copy($absolute, $target);
+        } finally {
+            $this->removeDirectory($extractTo);
         }
 
-        $this->removeDirectory($extractTo);
+        if ($filesWritten === 0) {
+            throw new \RuntimeException('The update package did not contain any files to install.');
+        }
+
+        if (function_exists('opcache_reset')) {
+            @opcache_reset();
+        }
     }
 
     /** @return \Generator<string, string> relative path => absolute path, skipping excluded data/tooling directories */

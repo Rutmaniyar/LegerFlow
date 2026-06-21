@@ -40,6 +40,7 @@ final class UpdateController extends Controller
     public function apply(): never
     {
         $settings = new SettingsService();
+        $updater = new UpdateService();
         $downloadUrl = (string) $settings->get('update_download_url', '');
         $version = (string) $settings->get('update_latest_version', '');
 
@@ -48,8 +49,13 @@ final class UpdateController extends Controller
             $this->redirect('/settings');
         }
 
+        if (!$updater->isNewer($version)) {
+            Session::flash('errors', ['You are already running the latest version. Run "Check for updates" again if you expect a newer release.']);
+            $this->redirect('/settings');
+        }
+
         try {
-            $backupPath = (new UpdateService())->applyUpdate($downloadUrl);
+            $backupPath = $updater->applyUpdate($downloadUrl);
             AuditLogger::log('system.updated', 'application', null, ['version' => $version, 'backup' => basename($backupPath)]);
             Session::flash('success', "Updated to v{$version}. A backup of the previous version was saved to storage/backups/" . basename($backupPath) . '.');
         } catch (\Throwable $exception) {
