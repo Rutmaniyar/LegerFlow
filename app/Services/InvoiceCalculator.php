@@ -6,9 +6,11 @@ namespace App\Services;
 
 final class InvoiceCalculator
 {
+    private const MAX_ITEMS = 200;
+
     public function fromRequest(array $data): array
     {
-        $descriptions = $data['item_description'] ?? [];
+        $descriptions = array_slice((array) ($data['item_description'] ?? []), 0, self::MAX_ITEMS, true);
         $quantities = $data['item_quantity'] ?? [];
         $prices = $data['item_unit_price'] ?? [];
         $discounts = $data['item_discount_rate'] ?? [];

@@ -259,6 +259,9 @@ final class InstallerService
                 'login_attempts' => 5,
                 'login_decay_minutes' => 15,
                 'max_upload_mb' => 2,
+                'session_idle_minutes' => 120,
+                'session_absolute_minutes' => 720,
+                'trusted_proxies' => [],
             ],
         ];
 

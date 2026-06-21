@@ -35,5 +35,10 @@ return [
         'login_attempts' => 5,
         'login_decay_minutes' => 15,
         'max_upload_mb' => 2,
+        'session_idle_minutes' => 120,
+        'session_absolute_minutes' => 720,
+        // Only IPs in this list are allowed to set X-Forwarded-For; leave empty
+        // unless this app sits behind a reverse proxy/load balancer you control.
+        'trusted_proxies' => [],
     ],
 ];

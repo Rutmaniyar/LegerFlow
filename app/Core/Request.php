@@ -50,11 +50,17 @@ final class Request
 
     public function ip(): string
     {
-        $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
-        if ($forwarded) {
-            return trim(explode(',', $forwarded)[0]);
+        $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $trustedProxies = (array) config('security.trusted_proxies', []);
+
+        // Only honor X-Forwarded-For when the immediate connection is a configured
+        // reverse proxy/load balancer - otherwise it's a client-supplied header an
+        // attacker can spoof to rotate their apparent IP and defeat rate limiting.
+        if ($trustedProxies === [] || !in_array($remoteAddr, $trustedProxies, true)) {
+            return $remoteAddr;
         }
 
-        return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        $forwarded = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+        return $forwarded !== '' ? trim(explode(',', $forwarded)[0]) : $remoteAddr;
     }
 }

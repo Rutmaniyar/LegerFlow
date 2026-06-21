@@ -64,6 +64,8 @@ final class UpdateService
             throw new \RuntimeException('The PHP zip extension is required to apply updates.');
         }
 
+        @set_time_limit(0);
+
         $tmpZip = sys_get_temp_dir() . '/ledgerflow-update-' . bin2hex(random_bytes(8)) . '.zip';
 
         try {

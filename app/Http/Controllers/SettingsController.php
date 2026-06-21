@@ -199,11 +199,21 @@ final class SettingsController extends Controller
             ->required('role_id', 'Role')
             ->integer('role_id', 'Role');
 
-        if ($validator->fails() || strlen((string) $data['password']) < 10) {
-            $errors = $validator->errors();
-            if (strlen((string) $data['password']) < 10) {
-                $errors['password'] = 'Password must be at least 10 characters.';
+        $errors = $validator->errors();
+        if (strlen((string) $data['password']) < 10) {
+            $errors['password'] = 'Password must be at least 10 characters.';
+        }
+
+        if (!isset($errors['role_id'])) {
+            $targetRole = app()->db()->fetch('SELECT name FROM roles WHERE id = ?', [(int) $data['role_id']]);
+            if (!$targetRole) {
+                $errors['role_id'] = 'Choose a valid role.';
+            } elseif ($targetRole['name'] === 'owner' && (Auth::user()['role_name'] ?? '') !== 'owner') {
+                $errors['role_id'] = 'Only an owner can grant the owner role.';
             }
+        }
+
+        if ($errors !== []) {
             $this->backWithErrors($errors, $data);
         }
 

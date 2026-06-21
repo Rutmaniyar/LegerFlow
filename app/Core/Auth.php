@@ -42,6 +42,8 @@ final class Auth
 
         Session::regenerate();
         Session::put('user_id', (int) $user['id']);
+        Session::put('_login_at', time());
+        Session::put('_last_activity', time());
         app()->db()->execute('UPDATE users SET last_login_at = NOW() WHERE id = ?', [$user['id']]);
 
         return true;
@@ -62,6 +64,19 @@ final class Auth
         if (!self::check()) {
             Response::redirect('/login');
         }
+
+        $now = time();
+        $idleLimit = (int) config('security.session_idle_minutes', 120) * 60;
+        $absoluteLimit = (int) config('security.session_absolute_minutes', 720) * 60;
+        $lastActivity = (int) Session::get('_last_activity', $now);
+        $loginAt = (int) Session::get('_login_at', $now);
+
+        if (($now - $lastActivity) > $idleLimit || ($now - $loginAt) > $absoluteLimit) {
+            self::logout();
+            Response::redirect('/login');
+        }
+
+        Session::put('_last_activity', $now);
     }
 
     public static function redirectIfAuthenticated(): void
