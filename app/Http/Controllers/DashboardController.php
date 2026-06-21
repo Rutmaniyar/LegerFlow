@@ -42,13 +42,26 @@ final class DashboardController extends Controller
              ORDER BY invoices.created_at DESC LIMIT 8'
         );
 
+        $business = (new SettingsService())->business();
+        $invoiceCount = (int) (app()->db()->fetch('SELECT COUNT(*) AS value FROM invoices')['value'] ?? 0);
+        $userCount = (int) (app()->db()->fetch('SELECT COUNT(*) AS value FROM users WHERE deleted_at IS NULL')['value'] ?? 0);
+
+        $checklist = [
+            ['label' => 'Add your first client', 'done' => (int) $stats['clients'] > 0, 'href' => '/clients'],
+            ['label' => 'Create your first invoice', 'done' => $invoiceCount > 0, 'href' => '/invoices/create'],
+            ['label' => 'Invite a teammate', 'done' => $userCount > 1, 'href' => '/settings'],
+            ['label' => 'Add your business logo', 'done' => !empty($business['logo_path']), 'href' => '/settings'],
+        ];
+
         return $this->view('dashboard/index', [
             'title' => 'Dashboard',
             'stats' => $stats,
             'monthly' => $monthly,
             'status' => $status,
             'recentInvoices' => $recentInvoices,
-            'business' => (new SettingsService())->business(),
+            'business' => $business,
+            'checklist' => $checklist,
+            'isFirstTime' => (int) $stats['clients'] === 0 && $invoiceCount === 0,
         ]);
     }
 }

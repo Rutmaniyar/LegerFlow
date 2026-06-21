@@ -93,7 +93,18 @@
                                 <td class="text-right font-bold"><?= money($invoice['balance_due'], $invoice['currency']) ?></td>
                             </tr>
                         <?php endforeach; ?>
-                        <?php if (!$invoices): ?><tr><td colspan="4" class="py-8 text-center text-ink-500">No invoices yet.</td></tr><?php endif; ?>
+                        <?php if (!$invoices): ?>
+                            <tr><td colspan="4">
+                                <?php empty_state([
+                                    'compact' => true,
+                                    'icon' => 'invoices',
+                                    'title' => 'No invoices for this client yet',
+                                    'description' => 'Invoices billed to this client will show up here with status and balance.',
+                                    'primaryActionLabel' => 'Create invoice',
+                                    'primaryActionHref' => '/invoices/create',
+                                ]) ?>
+                            </td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -109,7 +120,16 @@
                             <span class="text-sm text-ink-600"><?= money($quote['total'], $quote['currency']) ?></span>
                         </a>
                     <?php endforeach; ?>
-                    <?php if (!$quotes): ?><p class="text-sm text-ink-500">No quotes yet.</p><?php endif; ?>
+                    <?php if (!$quotes): ?>
+                        <?php empty_state([
+                            'compact' => true,
+                            'icon' => 'quotes',
+                            'title' => 'No quotes yet',
+                            'description' => 'Estimates sent to this client will appear here.',
+                            'primaryActionLabel' => 'Create quote',
+                            'primaryActionHref' => '/quotes/create',
+                        ]) ?>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="card p-5">
@@ -124,7 +144,14 @@
                             <p class="text-sm text-ink-500"><?= e($payment['invoice_number']) ?> · <?= e($payment['method']) ?></p>
                         </div>
                     <?php endforeach; ?>
-                    <?php if (!$payments): ?><p class="text-sm text-ink-500">No payments recorded.</p><?php endif; ?>
+                    <?php if (!$payments): ?>
+                        <?php empty_state([
+                            'compact' => true,
+                            'icon' => 'payments',
+                            'title' => 'No payments recorded',
+                            'description' => 'Payments collected against this client\'s invoices will appear here.',
+                        ]) ?>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

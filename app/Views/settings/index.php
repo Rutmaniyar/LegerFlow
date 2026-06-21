@@ -98,6 +98,17 @@ $selectedBusinessCountry = (string) old('country', $business['country'] ?? '');
                 </div>
                 <button class="btn-primary mt-5 w-full"><?= icon('send') ?> Save mail settings</button>
             </form>
+
+            <form method="post" action="/settings/mail/test" class="card p-5">
+                <?= csrf_field() ?>
+                <h2 class="text-lg font-black text-ink-900">Test SMTP connection</h2>
+                <p class="mt-1 text-sm text-ink-500">Sends a real email using your saved mail settings above, so you can confirm delivery actually works.</p>
+                <label class="mt-4 block">
+                    <span class="label">Send test to</span>
+                    <input class="field" name="test_email" type="email" value="<?= e(\App\Core\Auth::user()['email'] ?? '') ?>" placeholder="you@example.com">
+                </label>
+                <button class="btn-secondary mt-4 w-full"><?= icon('send') ?> Send test email</button>
+            </form>
         </div>
     </div>
 
@@ -203,7 +214,14 @@ $selectedBusinessCountry = (string) old('country', $business['country'] ?? '');
                         <p class="mt-1 text-sm text-ink-500"><?= e($log['user_name'] ?? 'System') ?> · <?= e($log['entity_type']) ?> #<?= e($log['entity_id']) ?></p>
                     </div>
                 <?php endforeach; ?>
-                <?php if (!$auditLogs): ?><p class="p-6 text-center text-sm text-ink-500">No audit events yet.</p><?php endif; ?>
+                <?php if (!$auditLogs): ?>
+                    <?php empty_state([
+                        'compact' => true,
+                        'icon' => 'shield',
+                        'title' => 'No audit events yet',
+                        'description' => 'Logins, financial actions, and privacy operations will be recorded here as your team uses LedgerFlow.',
+                    ]) ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>

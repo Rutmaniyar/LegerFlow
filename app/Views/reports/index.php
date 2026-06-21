@@ -34,7 +34,17 @@
                             <td class="text-right font-bold"><?= money($row['outstanding']) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$clientLedger): ?><tr><td colspan="4" class="py-10 text-center text-ink-500">No ledger data yet.</td></tr><?php endif; ?>
+                    <?php if (!$clientLedger): ?>
+                        <tr><td colspan="4">
+                            <?php empty_state([
+                                'icon' => 'clients',
+                                'title' => 'No client ledger data yet',
+                                'description' => 'Once you add clients and bill them, invoiced, paid, and outstanding totals per client will show up here.',
+                                'primaryActionLabel' => 'Add a client',
+                                'primaryActionHref' => '/clients',
+                            ]) ?>
+                        </td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
             <div class="table-footer"><span><?= e(count($clientLedger)) ?> ledger rows</span><span>Period filtered</span></div>

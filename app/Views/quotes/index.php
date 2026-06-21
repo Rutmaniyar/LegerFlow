@@ -20,7 +20,17 @@
                         <td class="text-right font-bold"><?= money($quote['total'], $quote['currency']) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$quotes): ?><tr><td colspan="5"><div class="empty-state my-4"><p class="font-bold text-ink-800">No quotes yet</p><p class="mt-1 text-sm text-ink-500">Create an estimate and convert it when accepted.</p></div></td></tr><?php endif; ?>
+                <?php if (!$quotes): ?>
+                    <tr><td colspan="5">
+                        <?php empty_state([
+                            'icon' => 'quotes',
+                            'title' => 'No quotes yet',
+                            'description' => 'This is where every estimate you build will appear. Send one, then convert it to an invoice once accepted.',
+                            'primaryActionLabel' => 'Create your first quote',
+                            'primaryActionHref' => '/quotes/create',
+                        ]) ?>
+                    </td></tr>
+                <?php endif; ?>
             </tbody>
         </table>
         <div class="table-footer">

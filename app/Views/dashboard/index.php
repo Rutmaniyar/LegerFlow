@@ -9,6 +9,26 @@ $cards = [
     ['Active clients', $stats['clients'], 'clients', 'bg-amber-100 text-amber-700'],
 ];
 ?>
+<?php if ($isFirstTime): ?>
+    <section class="glass-strip mb-6 overflow-hidden">
+        <div class="p-6 sm:p-10">
+            <p class="eyebrow">Welcome to LedgerFlow</p>
+            <h2 class="mt-2 text-2xl font-black tracking-tight text-ink-950 sm:text-3xl">Welcome! Let's get you started.</h2>
+            <p class="page-kicker mt-2 max-w-xl">Create your first invoice to begin tracking and managing your billing. Everything you add here flows straight into your dashboard, reports, and client ledger.</p>
+            <div class="mt-5 flex flex-wrap gap-3">
+                <a href="/invoices/create" class="btn-primary"><?= icon('plus') ?> Create your first invoice</a>
+                <a href="/clients" class="btn-secondary"><?= icon('clients') ?> Add a client first</a>
+            </div>
+            <?php empty_state([
+                'variant' => 'onboarding',
+                'compact' => true,
+                'title' => '',
+                'checklist' => $checklist,
+            ]) ?>
+        </div>
+    </section>
+<?php endif; ?>
+<?php if (!$isFirstTime): ?>
 <section class="glass-strip mb-6 overflow-hidden">
     <div class="grid gap-0 lg:grid-cols-[1.4fr_0.9fr]">
         <div class="p-5 sm:p-6">
@@ -39,6 +59,7 @@ $cards = [
         </div>
     </div>
 </section>
+<?php endif; ?>
 
 <section class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Billing shortcuts">
     <a class="quick-action" href="/clients">
@@ -71,6 +92,7 @@ $cards = [
     </a>
 </section>
 
+<?php if (!$isFirstTime): ?>
 <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
     <?php foreach ($cards as [$label, $value, $iconName, $tone]): ?>
         <article class="metric-card" data-motion="fade-up">
@@ -112,10 +134,14 @@ $cards = [
                 </div>
             <?php endforeach; ?>
             <?php if (!$status): ?>
-                <div class="empty-state">
-                    <p class="font-bold text-ink-800">No invoices yet</p>
-                    <p class="mt-1 text-sm text-ink-500">Create an invoice to start tracking billing status.</p>
-                </div>
+                <?php empty_state([
+                    'compact' => true,
+                    'icon' => 'invoices',
+                    'title' => 'No invoices yet',
+                    'description' => 'Create an invoice to start tracking billing status.',
+                    'primaryActionLabel' => 'Create invoice',
+                    'primaryActionHref' => '/invoices/create',
+                ]) ?>
             <?php endif; ?>
         </div>
     </div>
@@ -151,7 +177,16 @@ $cards = [
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$recentInvoices): ?>
-                    <tr><td colspan="5"><div class="empty-state my-4"><p class="font-bold text-ink-800">No invoices yet</p><p class="mt-1 text-sm text-ink-500">Create your first invoice to start tracking revenue.</p></div></td></tr>
+                    <tr><td colspan="5">
+                        <?php empty_state([
+                            'compact' => true,
+                            'icon' => 'invoices',
+                            'title' => 'No invoices yet',
+                            'description' => 'Create your first invoice to start tracking revenue.',
+                            'primaryActionLabel' => 'Create invoice',
+                            'primaryActionHref' => '/invoices/create',
+                        ]) ?>
+                    </td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -161,3 +196,4 @@ $cards = [
         </div>
     </div>
 </section>
+<?php endif; ?>

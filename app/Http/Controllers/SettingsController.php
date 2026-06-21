@@ -163,6 +163,36 @@ final class SettingsController extends Controller
         $this->redirect('/settings');
     }
 
+    public function testMail(Request $request): never
+    {
+        $to = trim((string) $request->input('test_email', ''));
+        if ($to === '') {
+            $to = (string) (Auth::user()['email'] ?? '');
+        }
+
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            Session::flash('errors', ['Enter a valid email address to send the test to.']);
+            $this->redirect('/settings');
+        }
+
+        $mailer = new MailerService();
+        $sent = $mailer->send(
+            $to,
+            'LedgerFlow test email',
+            "This is a test email from LedgerFlow.\n\nIf you received this, your mail settings are working correctly.\n\nSent " . date(DATE_ATOM) . '.'
+        );
+
+        if ($sent) {
+            AuditLogger::log('settings.mail_test_sent', null, null, ['to' => $to]);
+            Session::flash('success', "Test email sent to {$to}. Check the inbox (and spam folder) to confirm delivery.");
+        } else {
+            AuditLogger::log('settings.mail_test_failed', null, null, ['to' => $to, 'error' => $mailer->lastError()]);
+            Session::flash('errors', ['SMTP test failed: ' . ($mailer->lastError() ?? 'Unknown error.')]);
+        }
+
+        $this->redirect('/settings');
+    }
+
     public function addTax(Request $request): never
     {
         $data = $request->all();

@@ -107,7 +107,14 @@ $showTax = abs((float) ($invoice['tax_total'] ?? 0)) > 0.00001;
                         <p class="text-sm text-ink-500"><?= e($payment['method']) ?> <?= $payment['reference'] ? '· ' . e($payment['reference']) : '' ?></p>
                     </div>
                 <?php endforeach; ?>
-                <?php if (!$payments): ?><p class="text-sm text-ink-500">No payments recorded.</p><?php endif; ?>
+                <?php if (!$payments): ?>
+                    <?php empty_state([
+                        'compact' => true,
+                        'icon' => 'payments',
+                        'title' => 'No payments recorded',
+                        'description' => 'Record a payment using the form above once this invoice is paid.',
+                    ]) ?>
+                <?php endif; ?>
             </div>
         </div>
     </aside>

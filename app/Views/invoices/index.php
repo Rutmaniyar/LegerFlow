@@ -39,7 +39,37 @@
                         <td class="text-right font-bold"><?= money($invoice['balance_due'], $invoice['currency']) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$invoices): ?><tr><td colspan="6"><div class="empty-state my-4"><p class="font-bold text-ink-800">No invoices found</p><p class="mt-1 text-sm text-ink-500">Create an invoice or clear the status filter.</p></div></td></tr><?php endif; ?>
+                <?php if (!$invoices && $status === 'overdue'): ?>
+                    <tr><td colspan="6">
+                        <?php empty_state([
+                            'variant' => 'success',
+                            'title' => 'No overdue invoices',
+                            'description' => "Every invoice is current. Nothing needs chasing right now.",
+                            'secondaryActionLabel' => 'View all invoices',
+                            'secondaryActionHref' => '/invoices',
+                        ]) ?>
+                    </td></tr>
+                <?php elseif (!$invoices && $status !== ''): ?>
+                    <tr><td colspan="6">
+                        <?php empty_state([
+                            'variant' => 'filtered_results',
+                            'title' => 'No ' . $status . ' invoices match this filter',
+                            'description' => 'Try a different status, or clear the filter to see every invoice.',
+                            'secondaryActionLabel' => 'Clear filter',
+                            'secondaryActionHref' => '/invoices',
+                        ]) ?>
+                    </td></tr>
+                <?php elseif (!$invoices): ?>
+                    <tr><td colspan="6">
+                        <?php empty_state([
+                            'icon' => 'invoices',
+                            'title' => 'No invoices yet',
+                            'description' => 'This is where every invoice you create will appear, with status, due date, and balance at a glance.',
+                            'primaryActionLabel' => 'Create your first invoice',
+                            'primaryActionHref' => '/invoices/create',
+                        ]) ?>
+                    </td></tr>
+                <?php endif; ?>
             </tbody>
         </table>
         <div class="table-footer">

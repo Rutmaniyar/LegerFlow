@@ -35,8 +35,26 @@
                             <td><span class="badge bg-brand-100 text-brand-700"><?= e($client['data_processing_basis']) ?></span></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$clients): ?>
-                        <tr><td colspan="4"><div class="empty-state my-4"><p class="font-bold text-ink-800">No clients found</p><p class="mt-1 text-sm text-ink-500">Add a client to start quoting and invoicing.</p></div></td></tr>
+                    <?php if (!$clients && $search !== ''): ?>
+                        <tr><td colspan="4">
+                            <?php empty_state([
+                                'variant' => 'no_search_results',
+                                'searchTerm' => $search,
+                                'description' => 'Check the spelling, or try just the first name, company, or email domain.',
+                                'secondaryActionLabel' => 'Clear search',
+                                'secondaryActionHref' => '/clients',
+                            ]) ?>
+                        </td></tr>
+                    <?php elseif (!$clients): ?>
+                        <tr><td colspan="4">
+                            <?php empty_state([
+                                'icon' => 'clients',
+                                'title' => 'No clients yet',
+                                'description' => 'This is where every customer you bill will show up, with contact details and ledger history.',
+                                'primaryActionLabel' => 'Add your first client',
+                                'primaryActionHref' => '#add-client-form',
+                            ]) ?>
+                        </td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -47,7 +65,7 @@
         </div>
     </div>
 
-    <form method="post" action="/clients" class="card p-5 hover:shadow-soft">
+    <form method="post" action="/clients" id="add-client-form" class="card p-5 hover:shadow-soft">
         <?= csrf_field() ?>
         <h2 class="text-lg font-black text-ink-900">Add client</h2>
         <div class="mt-5 space-y-4">

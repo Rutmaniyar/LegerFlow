@@ -21,3 +21,16 @@
 # Ad-hoc verification screenshots/snapshots dropped at repo root
 /*.png
 /*-snapshot.md
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+/.vscode/
+/.idea/
+*.swp
+
+# PHP/test caches
+.phpunit.cache/
+.phpunit.result.cache

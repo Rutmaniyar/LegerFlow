@@ -18,13 +18,23 @@
                             <td class="text-right font-bold"><?= money($expense['amount'], $expense['currency']) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$expenses): ?><tr><td colspan="4"><div class="empty-state my-4"><p class="font-bold text-ink-800">No expenses recorded</p><p class="mt-1 text-sm text-ink-500">Record vendor costs to improve net income reporting.</p></div></td></tr><?php endif; ?>
+                    <?php if (!$expenses): ?>
+                        <tr><td colspan="4">
+                            <?php empty_state([
+                                'icon' => 'expenses',
+                                'title' => 'No expenses recorded',
+                                'description' => 'Track vendor costs, tax, and receipts here to see true net income in your reports.',
+                                'primaryActionLabel' => 'Record an expense',
+                                'primaryActionHref' => '#record-expense-form',
+                            ]) ?>
+                        </td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <form method="post" action="/expenses" enctype="multipart/form-data" class="card p-5 hover:shadow-soft">
+    <form method="post" action="/expenses" id="record-expense-form" enctype="multipart/form-data" class="card p-5 hover:shadow-soft">
         <?= csrf_field() ?>
         <h2 class="text-lg font-black text-ink-900">Record expense</h2>
         <div class="mt-5 space-y-4">

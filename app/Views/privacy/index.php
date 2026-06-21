@@ -25,14 +25,24 @@
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$requests): ?><tr><td colspan="5" class="py-10 text-center text-ink-500">No privacy requests logged.</td></tr><?php endif; ?>
+                    <?php if (!$requests): ?>
+                        <tr><td colspan="5">
+                            <?php empty_state([
+                                'icon' => 'shield',
+                                'title' => 'No privacy requests logged',
+                                'description' => 'Data subject access, rectification, and erasure requests will be tracked here for GDPR compliance.',
+                                'primaryActionLabel' => 'Log a request',
+                                'primaryActionHref' => '#log-request-form',
+                            ]) ?>
+                        </td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
     <div class="space-y-6">
-        <form method="post" action="/privacy" class="card p-5">
+        <form method="post" action="/privacy" id="log-request-form" class="card p-5">
             <?= csrf_field() ?>
             <h2 class="text-lg font-black text-ink-900">Log request</h2>
             <div class="mt-5 space-y-4">

@@ -6,6 +6,7 @@ use App\Core\App;
 use App\Core\Csrf;
 use App\Core\Session;
 use App\Core\SignedOption;
+use App\Core\View;
 
 function app(): App
 {
@@ -92,6 +93,11 @@ function old(string $key, mixed $default = ''): mixed
 function flash(string $key): mixed
 {
     return Session::pull($key);
+}
+
+function empty_state(array $props): void
+{
+    View::partial('partials/empty-state', $props);
 }
 
 function icon(string $name, string $class = 'h-4 w-4'): string

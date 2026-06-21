@@ -77,6 +77,7 @@ $router->get('/settings', [SettingsController::class, 'index'], ['auth', 'can:se
 $router->post('/settings/business', [SettingsController::class, 'updateBusiness'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
 $router->post('/settings/general', [SettingsController::class, 'updateGeneral'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
 $router->post('/settings/mail', [SettingsController::class, 'updateMail'], ['auth', 'can:settings.manage', 'throttle:20,5', 'csrf']);
+$router->post('/settings/mail/test', [SettingsController::class, 'testMail'], ['auth', 'can:settings.manage', 'throttle:5,5', 'csrf']);
 $router->post('/settings/taxes', [SettingsController::class, 'addTax'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
 $router->post('/settings/users', [SettingsController::class, 'addUser'], ['auth', 'can:settings.manage', 'throttle:20,5', 'csrf']);
 

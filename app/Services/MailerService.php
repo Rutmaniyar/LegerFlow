@@ -6,10 +6,20 @@ namespace App\Services;
 
 final class MailerService
 {
+    private ?string $lastError = null;
+
+    public function lastError(): ?string
+    {
+        return $this->lastError;
+    }
+
     public function send(string $to, string $subject, string $body, array $attachments = []): bool
     {
+        $this->lastError = null;
+
         $to = filter_var($to, FILTER_VALIDATE_EMAIL) ? $to : '';
         if ($to === '') {
+            $this->lastError = 'The recipient address is not a valid email address.';
             return false;
         }
 
@@ -25,7 +35,7 @@ final class MailerService
             if (($mail['transport'] ?? 'mail') === 'smtp' && ($mail['host'] ?? '') !== '') {
                 return $this->smtp($mail, $to, $subject, $body, $headers);
             }
-            return mail($to, $subject, $body, implode("\r\n", $headers));
+            return $this->phpMail($to, $subject, $body, $headers);
         }
 
         $boundary = 'lf_' . bin2hex(random_bytes(12));
@@ -45,7 +55,7 @@ final class MailerService
             return $this->smtp($mail, $to, $subject, $message, $headers);
         }
 
-        return mail($to, $subject, $message, implode("\r\n", $headers));
+        return $this->phpMail($to, $subject, $message, $headers);
     }
 
     public function template(string $key, array $vars): array
@@ -94,6 +104,16 @@ final class MailerService
         ];
     }
 
+    private function phpMail(string $to, string $subject, string $body, array $headers): bool
+    {
+        $result = mail($to, $subject, $body, implode("\r\n", $headers));
+        if (!$result) {
+            $this->lastError = error_get_last()['message'] ?? 'PHP mail() returned false. No local mail transport is configured.';
+        }
+
+        return $result;
+    }
+
     private function smtp(array $mail, string $to, string $subject, string $body, array $headers): bool
     {
         $host = (string) $mail['host'];
@@ -101,6 +121,7 @@ final class MailerService
         $scheme = ($mail['encryption'] ?? '') === 'ssl' ? 'ssl://' : '';
         $socket = @stream_socket_client($scheme . $host . ':' . $port, $errno, $error, 15);
         if (!$socket) {
+            $this->lastError = "Could not connect to {$host}:{$port} ({$error}).";
             return false;
         }
 
@@ -115,37 +136,78 @@ final class MailerService
             return $response;
         };
         $write = static fn (string $line) => fwrite($socket, $line . "\r\n");
-        $read();
+        $expect = function (string $response, string $step) {
+            $code = (int) substr($response, 0, 3);
+            if ($code < 200 || $code >= 400) {
+                $this->lastError = "{$step} failed: " . trim($response !== '' ? $response : 'no response from server');
+                return false;
+            }
+            return true;
+        };
+
+        if (!$expect($read(), 'Server greeting')) {
+            fclose($socket);
+            return false;
+        }
+
         $write('EHLO ' . ($_SERVER['SERVER_NAME'] ?? 'localhost'));
-        $read();
+        if (!$expect($read(), 'EHLO')) {
+            fclose($socket);
+            return false;
+        }
 
         if (($mail['encryption'] ?? '') === 'tls') {
             $write('STARTTLS');
-            $read();
+            if (!$expect($read(), 'STARTTLS')) {
+                fclose($socket);
+                return false;
+            }
             if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                $this->lastError = 'STARTTLS negotiation failed while upgrading to an encrypted connection.';
                 fclose($socket);
                 return false;
             }
             $write('EHLO ' . ($_SERVER['SERVER_NAME'] ?? 'localhost'));
-            $read();
+            if (!$expect($read(), 'EHLO after STARTTLS')) {
+                fclose($socket);
+                return false;
+            }
         }
 
         if (($mail['username'] ?? '') !== '') {
             $write('AUTH LOGIN');
-            $read();
+            if (!$expect($read(), 'AUTH LOGIN')) {
+                fclose($socket);
+                return false;
+            }
             $write(base64_encode((string) $mail['username']));
-            $read();
+            if (!$expect($read(), 'SMTP username')) {
+                fclose($socket);
+                return false;
+            }
             $write(base64_encode((string) ($mail['password'] ?? '')));
-            $read();
+            if (!$expect($read(), 'SMTP authentication')) {
+                fclose($socket);
+                return false;
+            }
         }
 
         $from = filter_var((string) ($mail['from_email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: 'no-reply@example.com';
         $write('MAIL FROM:<' . $from . '>');
-        $read();
+        if (!$expect($read(), 'MAIL FROM')) {
+            fclose($socket);
+            return false;
+        }
         $write('RCPT TO:<' . $to . '>');
-        $read();
+        if (!$expect($read(), 'RCPT TO')) {
+            fclose($socket);
+            return false;
+        }
         $write('DATA');
-        $read();
+        if (!$expect($read(), 'DATA')) {
+            fclose($socket);
+            return false;
+        }
         $write('To: <' . $to . '>');
         $write('Subject: ' . $subject);
         foreach ($headers as $header) {
@@ -153,7 +215,10 @@ final class MailerService
         }
         $write('');
         fwrite($socket, str_replace("\n.", "\n..", $body) . "\r\n.\r\n");
-        $read();
+        if (!$expect($read(), 'Message delivery')) {
+            fclose($socket);
+            return false;
+        }
         $write('QUIT');
         fclose($socket);
 

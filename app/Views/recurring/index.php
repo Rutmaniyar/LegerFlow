@@ -15,13 +15,23 @@
                             <td class="text-right font-bold"><?= money($row['total'], $row['currency']) ?></td>
                         </tr>
                     <?php endforeach; ?>
-                    <?php if (!$recurring): ?><tr><td colspan="4" class="py-10 text-center text-ink-500">No recurring invoice schedules yet.</td></tr><?php endif; ?>
+                    <?php if (!$recurring): ?>
+                        <tr><td colspan="4">
+                            <?php empty_state([
+                                'icon' => 'invoices',
+                                'title' => 'No recurring schedules yet',
+                                'description' => 'Set up a schedule to auto-generate invoices on a weekly, monthly, quarterly, or yearly cadence.',
+                                'primaryActionLabel' => 'Create a schedule',
+                                'primaryActionHref' => '#schedule-form',
+                            ]) ?>
+                        </td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <form method="post" action="/recurring" class="card p-5">
+    <form method="post" action="/recurring" id="schedule-form" class="card p-5">
         <?= csrf_field() ?>
         <h2 class="text-lg font-black text-ink-900">Create schedule</h2>
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
