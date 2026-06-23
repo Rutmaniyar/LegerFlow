@@ -1,4 +1,4 @@
-<section class="card p-5 hover:shadow-soft">
+<section class="card p-5 hover:shadow-soft" data-motion="fade-up">
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <p class="eyebrow">Pipeline</p>

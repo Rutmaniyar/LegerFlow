@@ -1,4 +1,4 @@
-<section class="mx-auto max-w-md">
+<section class="mx-auto max-w-md" data-motion="fade-up">
     <form method="post" action="/reset-password" class="card p-6">
         <?= csrf_field() ?>
         <input type="hidden" name="token" value="<?= e($token) ?>">

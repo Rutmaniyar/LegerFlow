@@ -1,4 +1,4 @@
-<section class="space-y-6">
+<section class="space-y-6" data-motion="fade-up" data-motion-stagger>
     <div class="toolbar flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <p class="eyebrow">Accounting insight</p>
@@ -15,14 +15,14 @@
 
     <p class="text-xs font-bold uppercase tracking-wide text-ink-500">Figures below are in your default currency, <?= e($currency) ?> - the currency your business is always settled in.</p>
 
-    <div class="grid gap-4 md:grid-cols-4">
-        <div class="metric-card"><p class="text-sm font-semibold text-ink-500">Income</p><p class="mt-2 text-2xl font-black"><?= money($income, $currency) ?></p></div>
-        <div class="metric-card"><p class="text-sm font-semibold text-ink-500">Expenses</p><p class="mt-2 text-2xl font-black"><?= money($expenses, $currency) ?></p></div>
-        <div class="metric-card"><p class="text-sm font-semibold text-ink-500">Net</p><p class="mt-2 text-2xl font-black"><?= money($profit, $currency) ?></p></div>
-        <div class="metric-card"><p class="text-sm font-semibold text-ink-500">Outstanding</p><p class="mt-2 text-2xl font-black"><?= money($outstanding, $currency) ?></p></div>
+    <div class="grid gap-4 md:grid-cols-4" data-motion="fade-up" data-motion-stagger>
+        <div class="metric-card" data-tilt><p class="text-sm font-semibold text-ink-500">Income</p><p class="mt-2 text-2xl font-black" data-count-up data-count-value="<?= e($income) ?>" data-count-decimals="2"><?= money($income, $currency) ?></p></div>
+        <div class="metric-card" data-tilt><p class="text-sm font-semibold text-ink-500">Expenses</p><p class="mt-2 text-2xl font-black" data-count-up data-count-value="<?= e($expenses) ?>" data-count-decimals="2"><?= money($expenses, $currency) ?></p></div>
+        <div class="metric-card" data-tilt><p class="text-sm font-semibold text-ink-500">Net</p><p class="mt-2 text-2xl font-black" data-count-up data-count-value="<?= e($profit) ?>" data-count-decimals="2"><?= money($profit, $currency) ?></p></div>
+        <div class="metric-card" data-tilt><p class="text-sm font-semibold text-ink-500">Outstanding</p><p class="mt-2 text-2xl font-black" data-count-up data-count-value="<?= e($outstanding) ?>" data-count-decimals="2"><?= money($outstanding, $currency) ?></p></div>
     </div>
 
-    <div class="card p-5">
+    <div class="card p-5" data-motion="fade-up">
         <h2 class="text-lg font-black text-ink-900">Client ledger</h2>
         <p class="text-sm text-ink-500">Invoices billed in <?= e($currency) ?> only - see "Other currencies" below for everything else.</p>
         <div class="mt-5 table-wrap">

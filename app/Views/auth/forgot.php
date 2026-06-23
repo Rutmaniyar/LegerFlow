@@ -1,4 +1,4 @@
-<section class="mx-auto max-w-md">
+<section class="mx-auto max-w-md" data-motion="fade-up">
     <form method="post" action="/forgot-password" class="card p-6">
         <?= csrf_field() ?>
         <h1 class="text-2xl font-black tracking-tight text-ink-900">Reset password</h1>

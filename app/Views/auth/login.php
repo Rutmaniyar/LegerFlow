@@ -1,5 +1,5 @@
 <section class="mx-auto grid max-w-4xl gap-6 lg:grid-cols-[0.8fr_1.05fr]">
-    <aside class="overflow-hidden rounded-lg border border-ink-800 bg-ink-950 text-white shadow-soft">
+    <aside data-motion-guest-aside class="overflow-hidden rounded-lg border border-ink-800 bg-ink-950 text-white shadow-soft">
         <div class="p-6 sm:p-7">
             <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-lg bg-brand-500 text-white">
                 <?= icon('shield', 'h-6 w-6') ?>
@@ -9,7 +9,7 @@
         </div>
     </aside>
 
-    <form method="post" action="/login" class="auth-card p-0 hover:shadow-soft">
+    <form method="post" action="/login" data-motion-guest-form class="auth-card p-0 hover:shadow-soft">
         <?= csrf_field() ?>
         <div class="border-b border-ink-100 bg-ink-50 p-6">
             <p class="eyebrow">Secure workspace</p>

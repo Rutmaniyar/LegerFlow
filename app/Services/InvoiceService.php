@@ -15,7 +15,10 @@ final class InvoiceService
             return;
         }
 
-        $paid = (float) (app()->db()->fetch('SELECT COALESCE(SUM(amount), 0) AS paid FROM payments WHERE invoice_id = ?', [$invoiceId])['paid'] ?? 0);
+        $paid = (float) (app()->db()->fetch(
+            "SELECT COALESCE(SUM(IF(type = 'refund', -amount, amount)), 0) AS paid FROM payments WHERE invoice_id = ?",
+            [$invoiceId]
+        )['paid'] ?? 0);
         $balance = max(0, (float) $invoice['total'] - $paid);
         $status = $invoice['status'];
         $latestPaymentDate = null;
@@ -69,6 +72,49 @@ final class InvoiceService
         });
 
         AuditLogger::log('payment.recorded', 'invoice', $invoiceId, ['amount' => $data['amount']]);
+    }
+
+    public function recordRefund(int $invoiceId, array $data): void
+    {
+        app()->db()->transaction(function () use ($invoiceId, $data): void {
+            $invoice = app()->db()->fetch('SELECT currency FROM invoices WHERE id = ?', [$invoiceId]);
+            if (!$invoice) {
+                throw new \RuntimeException('Invoice not found.');
+            }
+
+            app()->db()->execute(
+                "INSERT INTO payments (invoice_id, amount, type, currency, payment_date, method, reference, notes, recorded_by)
+                 VALUES (?, ?, 'refund', ?, ?, ?, ?, ?, ?)",
+                [
+                    $invoiceId,
+                    (float) $data['amount'],
+                    $invoice['currency'],
+                    $data['payment_date'],
+                    $data['method'] ?? 'refund',
+                    $data['reference'] ?? null,
+                    $data['notes'] ?? null,
+                    Auth::id(),
+                ]
+            );
+
+            $this->refreshStatus($invoiceId);
+        });
+
+        AuditLogger::log('payment.refunded', 'invoice', $invoiceId, ['amount' => $data['amount']]);
+    }
+
+    public function deletePayment(int $invoiceId, int $paymentId): void
+    {
+        app()->db()->transaction(function () use ($invoiceId, $paymentId): void {
+            $deleted = app()->db()->execute('DELETE FROM payments WHERE id = ? AND invoice_id = ?', [$paymentId, $invoiceId]);
+            if ($deleted === 0) {
+                throw new \RuntimeException('Payment not found.');
+            }
+
+            $this->refreshStatus($invoiceId);
+        });
+
+        AuditLogger::log('payment.deleted', 'invoice', $invoiceId, ['payment_id' => $paymentId]);
     }
 
     public function markSent(int $invoiceId): void

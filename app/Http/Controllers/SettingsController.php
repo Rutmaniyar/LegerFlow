@@ -114,7 +114,7 @@ final class SettingsController extends Controller
         }
 
         try {
-            $logoPath = (new UploadService())->store($request->file('logo') ?? [], 'logos');
+            $logoPath = (new UploadService())->store($request->file('logo') ?? [], 'logos', 512);
             if ($logoPath) {
                 app()->db()->execute('UPDATE business_settings SET logo_path = ?, updated_at = NOW() WHERE id = ?', [$logoPath, (int) $data['id']]);
             }
@@ -181,7 +181,12 @@ final class SettingsController extends Controller
 
     public function installDependencies(): never
     {
-        $result = (new InstallerService())->installComposerDependencies();
+        try {
+            $result = (new InstallerService())->installComposerDependencies();
+        } catch (\Throwable $exception) {
+            error_log('LedgerFlow: settings dependency install crashed - ' . $exception->getMessage());
+            $result = ['ok' => false, 'attempted' => true, 'message' => 'Not able to install dependencies. Please contact your developer.'];
+        }
 
         if ($result['ok']) {
             AuditLogger::log('settings.dependencies_installed');

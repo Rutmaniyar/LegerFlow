@@ -3,17 +3,17 @@ $showDiscount = abs((float) ($quote['discount_total'] ?? 0)) > 0.00001;
 $showTax = abs((float) ($quote['tax_total'] ?? 0)) > 0.00001;
 $logoPath = trim((string) ($business['logo_path'] ?? ''));
 ?>
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-6">
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex items-start gap-4">
                 <?php if ($logoPath !== ''): ?>
                     <img src="<?= e(upload_url($logoPath)) ?>" alt="<?= e($business['business_name'] ?? '') ?>" class="h-14 w-14 rounded-lg border border-ink-100 object-cover">
                 <?php endif; ?>
-                <div>
+                <div class="min-w-0">
                     <p class="text-sm font-bold uppercase tracking-wide text-brand-700">Quote</p>
-                    <h2 class="text-3xl font-black text-ink-900"><?= e($quote['quote_number']) ?></h2>
-                    <p class="mt-1 text-ink-500"><?= e($quote['client_name']) ?> · <?= e($quote['client_email']) ?></p>
+                    <h2 class="text-3xl font-black text-ink-900 break-words"><?= e($quote['quote_number']) ?></h2>
+                    <p class="mt-1 break-words text-ink-500"><?= e($quote['client_name']) ?> · <span class="break-all"><?= e($quote['client_email']) ?></span></p>
                 </div>
             </div>
             <span class="badge bg-ink-100 text-ink-700"><?= e($quote['status']) ?></span>

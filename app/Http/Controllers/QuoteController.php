@@ -261,23 +261,37 @@ final class QuoteController extends Controller
              FROM quotes INNER JOIN clients ON clients.id = quotes.client_id WHERE quotes.id = ?',
             [(int) $id]
         );
-        if ($quote && $quote['client_email']) {
-            [$subject, $body] = (new MailerService())->template('quote_send', [
-                'quote_number' => $quote['quote_number'],
-                'quote_total' => money($quote['total'], $quote['currency']),
-                'client_name' => $quote['client_name'],
-                'business_name' => (new SettingsService())->business()['business_name'] ?? config('app.name'),
-            ]);
-            (new MailerService())->send($quote['client_email'], $subject, $body, [[
-                'name' => $quote['quote_number'] . '.pdf',
-                'mime' => 'application/pdf',
-                'content' => (new PdfService())->quotePdf((int) $id),
-            ]]);
-            app()->db()->execute("UPDATE quotes SET status = IF(status = 'draft', 'sent', status), updated_at = NOW() WHERE id = ?", [(int) $id]);
-            AuditLogger::log('quote.sent', 'quote', (int) $id);
+        if (!$quote) {
+            Session::flash('errors', ['Quote not found.']);
+            $this->redirect('/quotes');
         }
 
-        Session::flash('success', 'Quote email queued through the configured mail transport.');
+        if (!$quote['client_email']) {
+            Session::flash('errors', ['No email on file for this client. Quote not sent.']);
+            $this->redirect('/quotes/' . $id);
+        }
+
+        [$subject, $body] = (new MailerService())->template('quote_send', [
+            'quote_number' => $quote['quote_number'],
+            'quote_total' => money($quote['total'], $quote['currency']),
+            'client_name' => $quote['client_name'],
+            'business_name' => (new SettingsService())->business()['business_name'] ?? config('app.name'),
+        ]);
+        $mailer = new MailerService();
+        $sent = $mailer->send($quote['client_email'], $subject, $body, [[
+            'name' => $quote['quote_number'] . '.pdf',
+            'mime' => 'application/pdf',
+            'content' => (new PdfService())->quotePdf((int) $id),
+        ]]);
+
+        if ($sent) {
+            app()->db()->execute("UPDATE quotes SET status = IF(status = 'draft', 'sent', status), updated_at = NOW() WHERE id = ?", [(int) $id]);
+            AuditLogger::log('quote.sent', 'quote', (int) $id);
+            Session::flash('success', 'Quote emailed to ' . $quote['client_email'] . '.');
+        } else {
+            Session::flash('errors', ['Quote email not sent: ' . ($mailer->lastError() ?? 'the mail transport rejected the message.')]);
+        }
+
         $this->redirect('/quotes/' . $id);
     }
 

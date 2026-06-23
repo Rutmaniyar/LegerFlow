@@ -1,5 +1,5 @@
 <?php $selectedCurrency = (string) old('currency', $client['currency'] ?? 'USD'); ?>
-<section class="grid gap-6 xl:grid-cols-[0.95fr_1.4fr]">
+<section class="grid gap-6 xl:grid-cols-[0.95fr_1.4fr]" data-motion="fade-up" data-motion-stagger>
     <form method="post" action="/clients/<?= e($client['id']) ?>" class="card p-5">
         <?= csrf_field() ?>
         <div class="mb-5 flex items-start justify-between">

@@ -93,7 +93,29 @@ final class InstallerService
      *
      * @return array{ok: bool, attempted: bool, message: string}
      */
+    /**
+     * Hard wall-clock budget for the Composer subprocess. Shared hosts commonly cap PHP's own
+     * max_execution_time around 30s, and that limit kills the script without giving this method
+     * a chance to return a friendly message - so this method enforces its own, shorter deadline
+     * and kills the subprocess itself instead of letting the host's watchdog fatal the request.
+     */
+    private const COMPOSER_TIMEOUT_SECONDS = 20;
+
     public function installComposerDependencies(): array
+    {
+        try {
+            return $this->runComposerInstall();
+        } catch (\Throwable $exception) {
+            error_log('LedgerFlow: composer install raised an unexpected error - ' . $exception->getMessage());
+            return [
+                'ok' => false,
+                'attempted' => true,
+                'message' => 'Dependencies could not be installed automatically. Please contact your developer.',
+            ];
+        }
+    }
+
+    private function runComposerInstall(): array
     {
         if (class_exists(\Dompdf\Dompdf::class)) {
             return ['ok' => true, 'attempted' => false, 'message' => 'Composer dependencies are already installed.'];
@@ -124,17 +146,50 @@ final class InstallerService
         $command = $composer . ' install --no-dev --no-interaction --optimize-autoloader';
         $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         $process = @proc_open($command, $descriptors, $pipes, ROOT_PATH);
-        if (!is_resource($process)) {
-            return ['ok' => false, 'attempted' => true, 'message' => 'Could not start Composer on this server.'];
+        if (!is_resource($process) || !isset($pipes[1], $pipes[2])) {
+            return ['ok' => false, 'attempted' => true, 'message' => 'Could not start Composer on this server. Please contact your developer.'];
         }
 
-        $output = trim((string) stream_get_contents($pipes[1]) . (string) stream_get_contents($pipes[2]));
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+
+        $output = '';
+        $deadline = time() + self::COMPOSER_TIMEOUT_SECONDS;
+        $timedOut = false;
+        while (true) {
+            $output .= (string) stream_get_contents($pipes[1]);
+            $output .= (string) stream_get_contents($pipes[2]);
+
+            $status = proc_get_status($process);
+            if (!$status['running']) {
+                break;
+            }
+
+            if (time() >= $deadline) {
+                $timedOut = true;
+                proc_terminate($process);
+                break;
+            }
+
+            usleep(200000);
+        }
+
         fclose($pipes[1]);
         fclose($pipes[2]);
-        $exitCode = proc_close($process);
+        $exitCode = $timedOut ? -1 : proc_close($process);
+        if ($timedOut) {
+            // proc_close() would block waiting for an already-terminated-but-not-yet-reaped process in
+            // some environments, so it is intentionally skipped here in favour of returning immediately.
+            error_log('LedgerFlow: composer install timed out after ' . self::COMPOSER_TIMEOUT_SECONDS . 's - ' . trim($output));
+            return [
+                'ok' => false,
+                'attempted' => true,
+                'message' => 'Composer is taking too long to run through the web server. Run "composer install --no-dev" via SSH instead.',
+            ];
+        }
 
         if ($exitCode !== 0) {
-            error_log('LedgerFlow: composer install exited with code ' . $exitCode . ' - ' . $output);
+            error_log('LedgerFlow: composer install exited with code ' . $exitCode . ' - ' . trim($output));
             return ['ok' => false, 'attempted' => true, 'message' => 'Composer ran but reported an error. Check the server error log for details.'];
         }
 
@@ -162,7 +217,7 @@ final class InstallerService
                 $pipes,
                 ROOT_PATH
             );
-            if (!is_resource($check)) {
+            if (!is_resource($check) || !isset($pipes[1], $pipes[2])) {
                 continue;
             }
             fclose($pipes[1]);

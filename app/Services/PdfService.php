@@ -52,6 +52,40 @@ final class PdfService
         return $this->legacyRender($business, $document, $items, [], 'quote_number', false);
     }
 
+    public function expenseHtml(int $expenseId): string
+    {
+        [$business, $expense] = $this->loadExpense($expenseId);
+
+        ob_start();
+        $html = View::render('pdf/expense', ['business' => $business, 'expense' => $expense, 'forPdf' => false], '');
+        ob_end_clean();
+
+        return $html;
+    }
+
+    public function expensePdf(int $expenseId): string
+    {
+        [$business, $expense] = $this->loadExpense($expenseId);
+
+        if (class_exists(Dompdf::class)) {
+            ob_start();
+            $html = View::render('pdf/expense', ['business' => $business, 'expense' => $expense, 'forPdf' => true], '');
+            ob_end_clean();
+            return $this->htmlToPdf($html);
+        }
+
+        return $this->legacyRenderExpense($business, $expense);
+    }
+
+    /** @return array{0: array, 1: array} */
+    private function loadExpense(int $expenseId): array
+    {
+        $expense = app()->db()->fetch('SELECT * FROM expenses WHERE id = ?', [$expenseId]);
+        $business = (new SettingsService())->business();
+
+        return [$business, $expense ?? []];
+    }
+
     /** @return array{0: array, 1: array, 2: array<int, array>, 3: array<int, array>, 4: string} */
     private function loadInvoice(int $invoiceId): array
     {
@@ -249,6 +283,79 @@ final class PdfService
         return $this->buildPdf(implode("\n", $ops), $logo);
     }
 
+    private function legacyRenderExpense(array $business, array $expense): string
+    {
+        $currency = (string) ($expense['currency'] ?? 'USD');
+        $brandRgb = $this->hexToUnitRgb((string) ($business['brand_color'] ?? '#0ea394'));
+        $logo = $this->loadLogo((string) ($business['logo_path'] ?? ''));
+
+        $ops = [];
+        $ops[] = $this->rect(0, 0, self::PAGE_WIDTH, 8, $brandRgb);
+
+        $y = 40.0;
+        $left = self::MARGIN;
+        $right = self::PAGE_WIDTH - self::MARGIN;
+
+        $headerTextX = $left;
+        if ($logo !== null) {
+            $boxSize = 56.0;
+            $scale = min($boxSize / $logo['width'], $boxSize / $logo['height']);
+            $drawW = $logo['width'] * $scale;
+            $drawH = $logo['height'] * $scale;
+            $ops[] = $this->image($left, self::PAGE_HEIGHT - $y - $drawH, $drawW, $drawH);
+            $headerTextX = $left + $boxSize + 14;
+        }
+
+        $businessName = (string) ($business['business_name'] ?? 'Business');
+        $ops[] = $this->text($headerTextX, $y + 14, 'F2', 15, $businessName, [0.07, 0.09, 0.15]);
+
+        $ops[] = $this->text($right - 160, $y, 'F2', 18, 'EXPENSE RECEIPT', $brandRgb, true);
+        $ops[] = $this->text($right - 160, $y + 20, 'F1', 9, 'Date: ' . (string) ($expense['expense_date'] ?? ''), [0.39, 0.45, 0.53], true);
+
+        $y = 110.0;
+        $ops[] = $this->line($left, $y, $right, $y, [0.85, 0.88, 0.92], 0.75);
+
+        $y += 26;
+        $rows = [
+            ['Vendor', (string) ($expense['vendor'] ?? '')],
+            ['Category', (string) ($expense['category'] ?? '')],
+            ['Payment method', (string) ($expense['payment_method'] ?? '')],
+            ['Amount', money($expense['amount'] ?? 0, $currency)],
+        ];
+        if ($this->hasAmount($expense['tax_amount'] ?? 0)) {
+            $rows[] = ['Tax', money($expense['tax_amount'], $currency)];
+        }
+        $total = (float) ($expense['amount'] ?? 0) + (float) ($expense['tax_amount'] ?? 0);
+
+        foreach ($rows as [$label, $value]) {
+            $ops[] = $this->text($left, $y, 'F2', 9, strtoupper($label), [0.39, 0.45, 0.53]);
+            $ops[] = $this->text($right, $y, 'F1', 10, $value, [0.13, 0.15, 0.20], true);
+            $y += 20;
+        }
+
+        $y += 6;
+        $ops[] = $this->line($left, $y, $right, $y, [0.85, 0.88, 0.92], 0.75);
+        $y += 20;
+        $ops[] = $this->text($left, $y, 'F2', 12, 'TOTAL', [0.07, 0.09, 0.15]);
+        $ops[] = $this->text($right, $y, 'F2', 12, money($total, $currency), [0.07, 0.09, 0.15], true);
+
+        $notes = trim((string) ($expense['notes'] ?? ''));
+        if ($notes !== '') {
+            $y += 30;
+            $ops[] = $this->text($left, $y, 'F2', 9, 'NOTES', [0.39, 0.45, 0.53]);
+            foreach ($this->wrapLines($notes, 95) as $line) {
+                $y += 14;
+                $ops[] = $this->text($left, $y, 'F1', 9, $line, [0.21, 0.24, 0.30]);
+            }
+        }
+
+        $footerTextY = self::PAGE_HEIGHT - 36;
+        $ops[] = $this->line($left, $footerTextY - 12, $right, $footerTextY - 12, [0.85, 0.88, 0.92], 0.75);
+        $ops[] = $this->text($left, $footerTextY, 'F1', 8, 'Recorded for bookkeeping purposes.', [0.55, 0.59, 0.65]);
+
+        return $this->buildPdf(implode("\n", $ops), $logo);
+    }
+
     /** @return array{0: array<int, string>, 1: float} */
     private function itemsTable(float $y, array $items, string $currency, bool $showTax, array $brandRgb): array
     {
@@ -350,11 +457,13 @@ final class PdfService
 
         $y += 20;
         foreach ($payments as $payment) {
+            $isRefund = ($payment['type'] ?? 'payment') === 'refund';
             $rowY = $y + 13;
             $ops[] = $this->text($dateX, $rowY, 'F1', 9, (string) $payment['payment_date'], [0.13, 0.15, 0.20]);
-            $ops[] = $this->text($methodX, $rowY, 'F1', 9, (string) $payment['method'], [0.13, 0.15, 0.20]);
+            $ops[] = $this->text($methodX, $rowY, 'F1', 9, (string) $payment['method'] . ($isRefund ? ' (refund)' : ''), [0.13, 0.15, 0.20]);
             $ops[] = $this->text($refX, $rowY, 'F1', 9, (string) ($payment['reference'] ?? ''), [0.13, 0.15, 0.20]);
-            $ops[] = $this->text($amountX, $rowY, 'F2', 9, money($payment['amount'], $currency), [0.05, 0.45, 0.35], true);
+            $amountLabel = ($isRefund ? '-' : '') . money($payment['amount'], $currency);
+            $ops[] = $this->text($amountX, $rowY, 'F2', 9, $amountLabel, $isRefund ? [0.7, 0.15, 0.15] : [0.05, 0.45, 0.35], true);
             $y += 18;
             $ops[] = $this->line($left, $y, $right, $y, [0.93, 0.95, 0.96], 0.5);
         }

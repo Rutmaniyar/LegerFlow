@@ -7,7 +7,7 @@ $selectedCurrency = (string) old('currency', $quote['currency'] ?? $business['de
 $formAction = $isEdit ? '/quotes/' . $quote['id'] : '/quotes';
 $cancelHref = $isEdit ? '/quotes/' . $quote['id'] : '/quotes';
 ?>
-<form method="post" action="<?= e($formAction) ?>" class="space-y-6">
+<form method="post" action="<?= e($formAction) ?>" class="space-y-6" data-motion="fade-up" data-motion-stagger>
     <?= csrf_field() ?>
     <section class="card p-5">
         <div class="grid gap-4 md:grid-cols-4">

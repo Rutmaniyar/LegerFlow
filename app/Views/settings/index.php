@@ -9,7 +9,7 @@ foreach ($systemStatus as $check) {
 }
 $systemIssues = array_values(array_filter($systemStatus, static fn (array $check): bool => !$check['ok']));
 ?>
-<section class="space-y-6">
+<section class="space-y-6" data-motion="fade-up" data-motion-stagger>
     <div class="toolbar flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
             <p class="eyebrow">Control plane</p>
@@ -71,7 +71,16 @@ $systemIssues = array_values(array_filter($systemStatus, static fn (array $check
                 <label><span class="label">Tax number</span><input class="field" name="tax_number" value="<?= e($business['tax_number']) ?>"></label>
                 <label class="md:col-span-2">
                     <span class="label">Logo</span>
-                    <input class="field pt-2" name="logo" type="file" accept="image/png,image/jpeg,image/webp">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div class="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-lg border border-ink-200 bg-ink-50">
+                            <img id="logo-preview" class="h-full w-full object-contain<?= trim((string) ($business['logo_path'] ?? '')) === '' ? ' hidden' : '' ?>" alt="Logo preview" src="<?= trim((string) ($business['logo_path'] ?? '')) !== '' ? e(upload_url($business['logo_path'])) : '' ?>">
+                            <span id="logo-preview-empty" class="text-xs font-semibold text-ink-400<?= trim((string) ($business['logo_path'] ?? '')) !== '' ? ' hidden' : '' ?>">No logo</span>
+                        </div>
+                        <div class="min-w-[12rem] flex-1">
+                            <input id="logo-input" class="field pt-2" name="logo" type="file" accept="image/png,image/jpeg,image/webp">
+                            <p class="field-help">Any image size works - it's automatically resized to fit, keeping its original proportions.</p>
+                        </div>
+                    </div>
                     <?php if ($gdCheck && !$gdCheck['ok']): ?>
                         <p class="field-help text-amber-700"><?= icon('warning', 'h-3.5 w-3.5') ?> <?= e($gdCheck['message']) ?></p>
                     <?php endif; ?>

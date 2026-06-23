@@ -7,7 +7,7 @@ $selectedCurrency = (string) old('currency', $invoice['currency'] ?? $business['
 $formAction = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
 $cancelHref = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
 ?>
-<form method="post" action="<?= e($formAction) ?>" class="space-y-6">
+<form method="post" action="<?= e($formAction) ?>" class="space-y-6" data-motion="fade-up" data-motion-stagger>
     <?= csrf_field() ?>
     <section class="card p-5">
         <div class="grid gap-4 md:grid-cols-4">

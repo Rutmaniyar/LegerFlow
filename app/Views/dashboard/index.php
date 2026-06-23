@@ -61,29 +61,29 @@ $cards = [
 </section>
 <?php endif; ?>
 
-<section class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Billing shortcuts">
-    <a class="quick-action" href="/clients">
+<section class="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Billing shortcuts" data-motion="fade-up" data-motion-stagger>
+    <a class="quick-action" data-tilt href="/clients">
         <span class="metric-icon bg-brand-100 text-brand-700"><?= icon('clients', 'h-5 w-5') ?></span>
         <span>
             <span class="block text-sm font-black text-ink-900">Client ledger</span>
             <span class="mt-1 block text-xs font-semibold leading-5 text-ink-500">Review contacts and payment history.</span>
         </span>
     </a>
-    <a class="quick-action" href="/quotes/create">
+    <a class="quick-action" data-tilt href="/quotes/create">
         <span class="metric-icon bg-accent-100 text-accent-700"><?= icon('quotes', 'h-5 w-5') ?></span>
         <span>
             <span class="block text-sm font-black text-ink-900">New estimate</span>
             <span class="mt-1 block text-xs font-semibold leading-5 text-ink-500">Build a quote and convert it later.</span>
         </span>
     </a>
-    <a class="quick-action" href="/invoices/create">
+    <a class="quick-action" data-tilt href="/invoices/create">
         <span class="metric-icon bg-amber-100 text-amber-700"><?= icon('invoices', 'h-5 w-5') ?></span>
         <span>
             <span class="block text-sm font-black text-ink-900">Issue invoice</span>
             <span class="mt-1 block text-xs font-semibold leading-5 text-ink-500">Create, email, and export PDF billing.</span>
         </span>
     </a>
-    <a class="quick-action" href="/reports">
+    <a class="quick-action" data-tilt href="/reports">
         <span class="metric-icon bg-ink-100 text-ink-700"><?= icon('reports', 'h-5 w-5') ?></span>
         <span>
             <span class="block text-sm font-black text-ink-900">Run reports</span>
@@ -93,14 +93,15 @@ $cards = [
 </section>
 
 <?php if (!$isFirstTime): ?>
-<section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+<section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-motion="fade-up" data-motion-stagger>
     <?php foreach ($cards as [$label, $value, $iconName, $tone]): ?>
-        <article class="metric-card" data-motion="fade-up">
+        <?php $isMoney = is_numeric($value) && $label !== 'Active clients'; ?>
+        <article class="metric-card" data-tilt>
             <div class="flex items-start justify-between">
                 <div>
                     <p class="text-sm font-semibold text-ink-500"><?= e($label) ?></p>
-                    <p class="mt-2 text-3xl font-black tracking-tight text-ink-900">
-                        <?= is_numeric($value) && $label !== 'Active clients' ? money($value, $currency) : e($value) ?>
+                    <p class="mt-2 text-3xl font-black tracking-tight text-ink-900"<?= is_numeric($value) ? ' data-count-up data-count-value="' . e($value) . '" data-count-decimals="' . ($isMoney ? '2' : '0') . '"' : '' ?>>
+                        <?= $isMoney ? money($value, $currency) : e($value) ?>
                     </p>
                     <p class="mt-3 text-xs font-bold uppercase tracking-wide text-ink-400">Updated now</p>
                 </div>
@@ -112,7 +113,7 @@ $cards = [
     <?php endforeach; ?>
 </section>
 
-<section class="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+<section class="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-5 hover:shadow-soft">
         <div class="mb-5 flex items-center justify-between">
             <div>
@@ -126,7 +127,7 @@ $cards = [
 
     <div class="card p-5 hover:shadow-soft">
         <h2 class="text-lg font-black text-ink-900">Invoice status</h2>
-        <div class="mt-5 space-y-3">
+        <div class="mt-5 space-y-3" data-motion="fade-up" data-motion-stagger>
             <?php foreach ($status as $row): ?>
                 <div class="flex items-center justify-between rounded-md border border-ink-100 bg-ink-50 px-3 py-2 transition hover:border-brand-200 hover:bg-brand-50/60">
                     <span class="flex items-center gap-2 text-sm font-bold capitalize text-ink-700"><span class="status-dot"></span><?= e($row['status']) ?></span>
@@ -147,7 +148,7 @@ $cards = [
     </div>
 </section>
 
-<section class="mt-6 card p-5">
+<section class="mt-6 card p-5" data-motion="fade-up">
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-lg font-black text-ink-900">Recent invoices</h2>

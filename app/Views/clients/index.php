@@ -1,5 +1,5 @@
 <?php $selectedCurrency = (string) old('currency', 'USD'); ?>
-<section class="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+<section class="grid gap-6 xl:grid-cols-[1.5fr_1fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-5 hover:shadow-soft">
         <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>

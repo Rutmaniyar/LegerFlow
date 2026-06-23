@@ -22,6 +22,11 @@
 /CLAUDE.md
 /docs/
 
+# Ad-hoc verification specs/fixtures dropped in tests/Feature/ during manual debugging sessions -
+# prefixed with an underscore by convention so they're easy to tell apart from real suite files.
+/tests/Feature/_*.spec.js
+/tests/Feature/fixtures/
+
 # Ad-hoc verification screenshots/snapshots dropped at repo root
 /*.png
 /*-snapshot.md

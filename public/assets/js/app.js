@@ -15,17 +15,9 @@
   document.querySelectorAll('[data-sidebar-open]').forEach((button) => button.addEventListener('click', openSidebar));
   document.querySelectorAll('[data-sidebar-close]').forEach((button) => button.addEventListener('click', closeSidebar));
 
-  if (!reduceMotion) {
-    document.querySelectorAll('[data-motion="fade-up"]').forEach((node, index) => {
-      node.animate(
-        [
-          { opacity: 0.98, transform: 'translateY(8px)' },
-          { opacity: 1, transform: 'translateY(0)' }
-        ],
-        { duration: 240, delay: Math.min(index * 35, 140), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' }
-      );
-    });
-  }
+  // data-motion="fade-up" entrance animation lives in motion.js (resources/js/motion.js, bundled as
+  // motion-bundle.js) - it replaced this file's original native-WAAPI version so the two don't both
+  // animate the same elements at once.
 
   document.querySelectorAll('[data-add-line]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -164,6 +156,21 @@
         if (label) label.textContent = originalLabel;
       }
     });
+  });
+
+  const logoInput = document.querySelector('#logo-input');
+  const logoPreview = document.querySelector('#logo-preview');
+  const logoPreviewEmpty = document.querySelector('#logo-preview-empty');
+  logoInput?.addEventListener('change', () => {
+    const file = logoInput.files?.[0];
+    if (!file || !logoPreview) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      logoPreview.src = String(reader.result);
+      logoPreview.classList.remove('hidden');
+      logoPreviewEmpty?.classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
   });
 
   const cookieBanner = document.querySelector('#cookie-banner');

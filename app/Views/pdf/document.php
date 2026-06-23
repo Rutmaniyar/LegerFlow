@@ -252,9 +252,9 @@ if ($logoPath !== '') {
             <?php foreach ($payments as $payment): ?>
                 <tr>
                     <td><?= e($payment['payment_date']) ?></td>
-                    <td><?= e($payment['method']) ?></td>
+                    <td><?= e($payment['method']) ?><?= ($payment['type'] ?? 'payment') === 'refund' ? ' (refund)' : '' ?></td>
                     <td><?= e($payment['reference'] ?? '') ?></td>
-                    <td class="num"><?= money($payment['amount'], $currency) ?></td>
+                    <td class="num"><?= ($payment['type'] ?? 'payment') === 'refund' ? '-' : '' ?><?= money($payment['amount'], $currency) ?></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>

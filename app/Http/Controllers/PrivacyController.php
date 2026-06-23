@@ -9,6 +9,7 @@ use App\Core\Request;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\AuditLogger;
+use App\Services\SettingsService;
 
 final class PrivacyController extends Controller
 {
@@ -20,7 +21,7 @@ final class PrivacyController extends Controller
         return $this->view('privacy/index', [
             'title' => 'Privacy',
             'requests' => app()->db()->fetchAll('SELECT * FROM data_subject_requests ORDER BY created_at DESC LIMIT 200'),
-            'business' => app()->db()->fetch('SELECT privacy_policy FROM business_settings ORDER BY id LIMIT 1'),
+            'business' => (new SettingsService())->business(),
         ]);
     }
 

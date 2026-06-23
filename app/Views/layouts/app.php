@@ -15,6 +15,7 @@ $business = $business ?? (new SettingsService())->business();
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <script>if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.classList.add('motion-ready');}</script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title><?= e(($title ?? 'Dashboard') . ' · ' . config('app.name', 'LedgerFlow')) ?></title>
@@ -68,14 +69,13 @@ $business = $business ?? (new SettingsService())->business();
 
             <main id="main" class="px-4 py-6 sm:px-6 lg:px-8">
                 <?php \App\Core\View::partial('partials/flash'); ?>
-                <div data-motion="fade-up">
-                    <?= $content ?>
-                </div>
+                <?= $content ?>
             </main>
         </div>
     </div>
     <div id="sidebar-backdrop" class="fixed inset-0 z-30 hidden bg-ink-900/30 lg:hidden" data-sidebar-close></div>
     <?php \App\Core\View::partial('partials/cookie-banner'); ?>
     <script src="<?= e(asset('js/app.js')) ?>" defer></script>
+    <script src="<?= e(asset('js/motion-bundle.js')) ?>" defer></script>
 </body>
 </html>

@@ -3,26 +3,33 @@ $showDiscount = abs((float) ($invoice['discount_total'] ?? 0)) > 0.00001;
 $showTax = abs((float) ($invoice['tax_total'] ?? 0)) > 0.00001;
 $logoPath = trim((string) ($business['logo_path'] ?? ''));
 ?>
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-6">
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex items-start gap-4">
                 <?php if ($logoPath !== ''): ?>
                     <img src="<?= e(upload_url($logoPath)) ?>" alt="<?= e($business['business_name'] ?? '') ?>" class="h-14 w-14 rounded-lg border border-ink-100 object-cover">
                 <?php endif; ?>
-                <div>
+                <div class="min-w-0">
                     <p class="text-sm font-bold uppercase tracking-wide text-brand-700">Invoice</p>
-                    <h2 class="text-3xl font-black text-ink-900"><?= e($invoice['invoice_number']) ?></h2>
-                    <p class="mt-1 text-ink-500"><?= e($invoice['client_name']) ?> · <?= e($invoice['client_email']) ?></p>
+                    <h2 class="text-3xl font-black text-ink-900 break-words"><?= e($invoice['invoice_number']) ?></h2>
+                    <p class="mt-1 break-words text-ink-500"><?= e($invoice['client_name']) ?> · <span class="break-all"><?= e($invoice['client_email']) ?></span></p>
                 </div>
             </div>
-            <div class="flex flex-col items-end gap-2">
+            <div class="flex flex-col items-start gap-2 sm:items-end">
                 <span class="badge <?= $invoice['status'] === 'overdue' ? 'bg-red-100 text-red-700' : ($invoice['status'] === 'paid' ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-700') ?>"><?= e($invoice['status']) ?></span>
                 <?php if ($invoice['status'] === 'paid' && !empty($invoice['paid_at'])): ?>
                     <span class="text-xs font-bold uppercase tracking-wide text-brand-700">Paid <?= e(date('M j, Y', strtotime((string) $invoice['paid_at']))) ?></span>
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if ($overpaid > 0.0001): ?>
+            <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4" role="alert">
+                <p class="font-bold text-amber-900">Overpaid by <?= money($overpaid, $invoice['currency']) ?></p>
+                <p class="mt-1 text-sm text-amber-800">Settle this by refunding the client, or delete a payment below if one was added by mistake.</p>
+            </div>
+        <?php endif; ?>
 
         <div class="grid gap-3 sm:grid-cols-3">
             <div class="rounded-lg border border-ink-100 bg-ink-50 p-4">
@@ -127,16 +134,48 @@ $logoPath = trim((string) ($business['logo_path'] ?? ''));
             <button class="btn-primary mt-5 w-full"><?= icon('payments') ?> Record payment</button>
         </form>
 
+        <?php if ($overpaid > 0.0001): ?>
+            <form method="post" action="/invoices/<?= e($invoice['id']) ?>/refunds" class="card p-5">
+                <?= csrf_field() ?>
+                <h2 class="text-lg font-black text-ink-900">Record refund</h2>
+                <p class="mt-1 text-sm text-ink-500">Logs money returned to the client to settle the overpayment.</p>
+                <div class="mt-4 space-y-4">
+                    <label>
+                        <span class="label">Amount</span>
+                        <input class="field" name="amount" type="number" step="0.01" min="0.01" value="<?= e($overpaid) ?>" required>
+                    </label>
+                    <label>
+                        <span class="label">Refund date</span>
+                        <input class="field" name="payment_date" type="date" value="<?= e(date('Y-m-d')) ?>" required>
+                    </label>
+                    <label>
+                        <span class="label">Reference</span>
+                        <input class="field" name="reference">
+                    </label>
+                </div>
+                <button class="btn-secondary mt-5 w-full"><?= icon('payments') ?> Record refund</button>
+            </form>
+        <?php endif; ?>
+
         <div class="card p-5">
             <h2 class="text-lg font-black text-ink-900">Payment history</h2>
             <div class="mt-4 space-y-3">
                 <?php foreach ($payments as $payment): ?>
                     <div class="rounded-md border border-ink-100 bg-white px-3 py-2">
-                        <div class="flex justify-between">
-                            <span class="font-bold"><?= money($payment['amount'], $payment['currency']) ?></span>
+                        <div class="flex flex-wrap items-start justify-between gap-2">
+                            <span class="font-bold <?= $payment['type'] === 'refund' ? 'text-red-700' : '' ?>">
+                                <?= $payment['type'] === 'refund' ? '-' : '' ?><?= money($payment['amount'], $payment['currency']) ?>
+                                <?php if ($payment['type'] === 'refund'): ?><span class="badge bg-red-100 text-red-700 ml-1">Refund</span><?php endif; ?>
+                            </span>
                             <span class="text-sm text-ink-500"><?= e($payment['payment_date']) ?></span>
                         </div>
-                        <p class="text-sm text-ink-500"><?= e($payment['method']) ?> <?= $payment['reference'] ? '· ' . e($payment['reference']) : '' ?></p>
+                        <div class="mt-1 flex flex-wrap items-center justify-between gap-2">
+                            <p class="min-w-0 break-words text-sm text-ink-500"><?= e($payment['method']) ?> <?= $payment['reference'] ? '· ' . e($payment['reference']) : '' ?></p>
+                            <form method="post" action="/invoices/<?= e($invoice['id']) ?>/payments/<?= e($payment['id']) ?>/delete" onsubmit="return confirm('Delete this <?= $payment['type'] === 'refund' ? 'refund' : 'payment' ?> entry? This cannot be undone.')">
+                                <?= csrf_field() ?>
+                                <button class="text-xs font-bold uppercase tracking-wide text-red-700 hover:underline" aria-label="Delete entry"><?= icon('trash', 'h-3.5 w-3.5') ?> Delete</button>
+                            </form>
+                        </div>
                     </div>
                 <?php endforeach; ?>
                 <?php if (!$payments): ?>

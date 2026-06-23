@@ -307,7 +307,8 @@ final class InvoiceController extends Controller
             'title' => $invoice['invoice_number'],
             'invoice' => $invoice,
             'items' => app()->db()->fetchAll('SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order', [(int) $id]),
-            'payments' => app()->db()->fetchAll('SELECT * FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC', [(int) $id]),
+            'payments' => app()->db()->fetchAll('SELECT * FROM payments WHERE invoice_id = ? ORDER BY payment_date DESC, id DESC', [(int) $id]),
+            'overpaid' => max(0, (float) $invoice['amount_paid'] - (float) $invoice['total']),
             'business' => (new SettingsService())->business(),
             'paymentMethods' => preg_split('/\r\n|\r|\n/', (string) (new SettingsService())->get('payment_methods', 'Bank transfer')),
         ]);
@@ -335,6 +336,39 @@ final class InvoiceController extends Controller
         $this->redirect('/invoices/' . $id);
     }
 
+    public function deletePayment(Request $request, string $id, string $paymentId): never
+    {
+        try {
+            (new InvoiceService())->deletePayment((int) $id, (int) $paymentId);
+            Session::flash('success', 'Payment deleted.');
+        } catch (\Throwable $exception) {
+            Session::flash('errors', [$exception->getMessage()]);
+        }
+
+        $this->redirect('/invoices/' . $id);
+    }
+
+    public function recordRefund(Request $request, string $id): never
+    {
+        $data = $request->all();
+        $validator = (new Validator($data))
+            ->required('amount', 'Amount')
+            ->numeric('amount', 'Amount')
+            ->required('payment_date', 'Refund date');
+
+        if ($validator->fails() || (float) ($data['amount'] ?? 0) <= 0) {
+            $errors = $validator->errors();
+            if ((float) ($data['amount'] ?? 0) <= 0) {
+                $errors['amount'] = 'Refund amount must be greater than zero.';
+            }
+            $this->backWithErrors($errors, $data);
+        }
+
+        (new InvoiceService())->recordRefund((int) $id, $data);
+        Session::flash('success', 'Refund recorded.');
+        $this->redirect('/invoices/' . $id);
+    }
+
     public function pdf(Request $request, string $id): never
     {
         if ((string) $request->input('preview', '') !== '') {
@@ -359,24 +393,38 @@ final class InvoiceController extends Controller
             [(int) $id]
         );
 
-        if ($invoice && $invoice['client_email']) {
-            [$subject, $body] = (new MailerService())->template('invoice_send', [
-                'invoice_number' => $invoice['invoice_number'],
-                'invoice_total' => money($invoice['total'], $invoice['currency']),
-                'balance_due' => money($invoice['balance_due'], $invoice['currency']),
-                'due_date' => $invoice['due_date'],
-                'client_name' => $invoice['client_name'],
-                'business_name' => (new SettingsService())->business()['business_name'] ?? config('app.name'),
-            ]);
-            (new MailerService())->send($invoice['client_email'], $subject, $body, [[
-                'name' => $invoice['invoice_number'] . '.pdf',
-                'mime' => 'application/pdf',
-                'content' => (new PdfService())->invoicePdf((int) $id),
-            ]]);
-            (new InvoiceService())->markSent((int) $id);
+        if (!$invoice) {
+            Session::flash('errors', ['Invoice not found.']);
+            $this->redirect('/invoices');
         }
 
-        Session::flash('success', 'Invoice email queued through the configured mail transport.');
+        if (!$invoice['client_email']) {
+            Session::flash('errors', ['No email on file for this client. Invoice not sent.']);
+            $this->redirect('/invoices/' . $id);
+        }
+
+        [$subject, $body] = (new MailerService())->template('invoice_send', [
+            'invoice_number' => $invoice['invoice_number'],
+            'invoice_total' => money($invoice['total'], $invoice['currency']),
+            'balance_due' => money($invoice['balance_due'], $invoice['currency']),
+            'due_date' => $invoice['due_date'],
+            'client_name' => $invoice['client_name'],
+            'business_name' => (new SettingsService())->business()['business_name'] ?? config('app.name'),
+        ]);
+        $mailer = new MailerService();
+        $sent = $mailer->send($invoice['client_email'], $subject, $body, [[
+            'name' => $invoice['invoice_number'] . '.pdf',
+            'mime' => 'application/pdf',
+            'content' => (new PdfService())->invoicePdf((int) $id),
+        ]]);
+
+        if ($sent) {
+            (new InvoiceService())->markSent((int) $id);
+            Session::flash('success', 'Invoice emailed to ' . $invoice['client_email'] . '.');
+        } else {
+            Session::flash('errors', ['Invoice email not sent: ' . ($mailer->lastError() ?? 'the mail transport rejected the message.')]);
+        }
+
         $this->redirect('/invoices/' . $id);
     }
 }

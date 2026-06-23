@@ -11,6 +11,13 @@
     scroll-behavior: smooth;
   }
 
+  html,
+  body {
+    /* Guards against transform-based entrance animations (slide-in panels, off-canvas starts)
+       momentarily widening the page's scrollable area before they settle into place. */
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-ink-50 text-ink-900 antialiased;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -225,6 +232,38 @@
 
   .auth-card {
     @apply overflow-hidden rounded-lg border border-white/80 bg-white shadow-soft;
+  }
+
+  [data-tilt] {
+    @apply will-change-transform;
+    transform-style: preserve-3d;
+    /* The tilt itself is driven by direct style.transform writes on every pointermove (cheap,
+       immediate, no animation-object overhead) - this transition is what makes those discrete
+       writes actually look like smooth motion instead of a series of jump-cuts, and is also what
+       eases the tilt back to resting on pointerleave. */
+    transition: transform 150ms ease-out;
+  }
+
+  /*
+   * Pre-hides motion targets via the stylesheet (which loads and applies before any JS runs),
+   * so there's no flash-of-visible-content before motion.js's inView/animate takes over. The
+   * `.motion-ready` class is only added by a tiny inline script in <head> (see layouts/app.php
+   * and layouts/guest.php) when JS actually runs and the user hasn't requested reduced motion -
+   * if JS is disabled, or motion is reduced, content stays visible by default (no `.motion-ready`
+   * ever added, so none of these rules apply and nothing is ever hidden).
+   */
+  .motion-ready [data-motion="fade-up"]:not([data-motion-stagger]) {
+    opacity: 0;
+  }
+
+  .motion-ready [data-motion="fade-up"][data-motion-stagger] > * {
+    opacity: 0;
+  }
+
+  .motion-ready [data-motion-guest-aside],
+  .motion-ready [data-motion-guest-form],
+  .motion-ready [data-flash] {
+    opacity: 0;
   }
 }
 

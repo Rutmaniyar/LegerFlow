@@ -73,11 +73,18 @@ $router->post('/invoices/{id}/delete', [InvoiceController::class, 'destroy'], ['
 $router->get('/invoices/{id}/pdf', [InvoiceController::class, 'pdf'], ['auth', 'can:invoices.view']);
 $router->post('/invoices/{id}/send', [InvoiceController::class, 'send'], ['auth', 'can:invoices.manage', 'throttle:20,5', 'csrf']);
 $router->post('/invoices/{id}/payments', [InvoiceController::class, 'recordPayment'], ['auth', 'can:payments.manage', 'throttle:60,1', 'csrf']);
+$router->post('/invoices/{id}/payments/{paymentId}/delete', [InvoiceController::class, 'deletePayment'], ['auth', 'can:payments.manage', 'throttle:30,1', 'csrf']);
+$router->post('/invoices/{id}/refunds', [InvoiceController::class, 'recordRefund'], ['auth', 'can:payments.manage', 'throttle:30,1', 'csrf']);
 
 $router->get('/recurring', [RecurringController::class, 'index'], ['auth', 'can:invoices.manage']);
 $router->post('/recurring', [RecurringController::class, 'store'], ['auth', 'can:invoices.manage', 'throttle:30,1', 'csrf']);
 $router->get('/expenses', [ExpenseController::class, 'index'], ['auth', 'can:expenses.manage']);
 $router->post('/expenses', [ExpenseController::class, 'store'], ['auth', 'can:expenses.manage', 'throttle:60,1', 'csrf']);
+$router->get('/expenses/{id}', [ExpenseController::class, 'show'], ['auth', 'can:expenses.manage']);
+$router->get('/expenses/{id}/edit', [ExpenseController::class, 'edit'], ['auth', 'can:expenses.manage']);
+$router->post('/expenses/{id}', [ExpenseController::class, 'update'], ['auth', 'can:expenses.manage', 'throttle:60,1', 'csrf']);
+$router->post('/expenses/{id}/delete', [ExpenseController::class, 'destroy'], ['auth', 'can:expenses.manage', 'throttle:30,1', 'csrf']);
+$router->get('/expenses/{id}/pdf', [ExpenseController::class, 'pdf'], ['auth', 'can:expenses.manage']);
 
 $router->get('/reports', [ReportController::class, 'index'], ['auth', 'can:reports.view']);
 

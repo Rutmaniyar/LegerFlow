@@ -1,4 +1,4 @@
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-5">
         <h2 class="text-lg font-black text-ink-900">Data subject requests</h2>
         <div class="mt-5 table-wrap">
@@ -11,16 +11,24 @@
                             <td><?= e($dsr['request_type']) ?></td>
                             <td><span class="badge bg-ink-100 text-ink-700"><?= e($dsr['status']) ?></span></td>
                             <td><?= e($dsr['due_at']) ?></td>
-                            <td>
-                                <form method="post" action="/privacy/<?= e($dsr['id']) ?>" class="flex gap-2">
+                            <td class="min-w-[16rem]">
+                                <form method="post" action="/privacy/<?= e($dsr['id']) ?>" class="flex flex-col gap-2">
                                     <?= csrf_field() ?>
-                                    <label class="sr-only" for="status-<?= e($dsr['id']) ?>">Status</label>
-                                    <select id="status-<?= e($dsr['id']) ?>" class="field" name="status">
-                                        <?php foreach (['received','verifying','processing','completed','rejected'] as $status): ?><option value="<?= e($status) ?>" <?= $dsr['status'] === $status ? 'selected' : '' ?>><?= e($status) ?></option><?php endforeach; ?>
-                                    </select>
-                                    <input type="hidden" name="verification_notes" value="<?= e($dsr['verification_notes']) ?>">
-                                    <input type="hidden" name="response_notes" value="<?= e($dsr['response_notes']) ?>">
-                                    <button class="btn-secondary">Save</button>
+                                    <label class="block" for="status-<?= e($dsr['id']) ?>">
+                                        <span class="label">Status</span>
+                                        <select id="status-<?= e($dsr['id']) ?>" class="field" name="status">
+                                            <?php foreach (['received','verifying','processing','completed','rejected'] as $status): ?><option value="<?= e($status) ?>" <?= $dsr['status'] === $status ? 'selected' : '' ?>><?= e($status) ?></option><?php endforeach; ?>
+                                        </select>
+                                    </label>
+                                    <label class="block" for="verification-notes-<?= e($dsr['id']) ?>">
+                                        <span class="label">Verification notes</span>
+                                        <textarea id="verification-notes-<?= e($dsr['id']) ?>" class="textarea" name="verification_notes" rows="2"><?= e($dsr['verification_notes']) ?></textarea>
+                                    </label>
+                                    <label class="block" for="response-notes-<?= e($dsr['id']) ?>">
+                                        <span class="label">Response notes</span>
+                                        <textarea id="response-notes-<?= e($dsr['id']) ?>" class="textarea" name="response_notes" rows="2"><?= e($dsr['response_notes']) ?></textarea>
+                                    </label>
+                                    <button class="btn-secondary w-full sm:w-auto">Save</button>
                                 </form>
                             </td>
                         </tr>

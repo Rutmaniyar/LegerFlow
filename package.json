@@ -2,10 +2,17 @@
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i ./resources/css/app.css -o ./public/assets/css/app.css --minify",
+    "build:js": "esbuild resources/js/motion.js --bundle --minify --format=iife --outfile=public/assets/js/motion-bundle.js",
+    "build": "npm run build:css && npm run build:js",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "esbuild": "^0.28.1",
     "tailwindcss": "3.4.17"
+  },
+  "dependencies": {
+    "framer-motion": "^12.41.0",
+    "motion": "^12.41.0"
   }
 }

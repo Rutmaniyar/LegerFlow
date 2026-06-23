@@ -1,5 +1,5 @@
 <?php $selectedCurrency = (string) old('currency', 'USD'); ?>
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+<section class="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-5 hover:shadow-soft">
         <div class="mb-5">
             <p class="eyebrow">Spend control</p>
@@ -8,18 +8,24 @@
         </div>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th class="text-right">Amount</th></tr></thead>
+                <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th class="text-right">Amount</th><th class="text-right">Actions</th></tr></thead>
                 <tbody class="divide-y divide-ink-100">
                     <?php foreach ($expenses as $expense): ?>
                         <tr>
                             <td><?= e($expense['expense_date']) ?></td>
-                            <td class="font-bold"><?= e($expense['vendor']) ?></td>
+                            <td class="font-bold"><a class="text-brand-700 hover:underline" href="/expenses/<?= e($expense['id']) ?>"><?= e($expense['vendor']) ?></a></td>
                             <td><?= e($expense['category']) ?></td>
                             <td class="text-right font-bold"><?= money($expense['amount'], $expense['currency']) ?></td>
+                            <td class="text-right">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <a class="btn-secondary h-8 px-2.5 text-xs" href="/expenses/<?= e($expense['id']) ?>"><?= icon('invoices', 'h-3.5 w-3.5') ?> View</a>
+                                    <a class="btn-secondary h-8 px-2.5 text-xs" href="/expenses/<?= e($expense['id']) ?>/edit"><?= icon('edit', 'h-3.5 w-3.5') ?> Edit</a>
+                                </div>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$expenses): ?>
-                        <tr><td colspan="4">
+                        <tr><td colspan="5">
                             <?php empty_state([
                                 'icon' => 'expenses',
                                 'title' => 'No expenses recorded',
