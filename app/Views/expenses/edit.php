@@ -6,7 +6,7 @@
         <div class="mt-5 space-y-4">
             <label>
                 <span class="label">Vendor *</span>
-                <select class="field" name="vendor_id" required>
+                <select class="field" name="vendor_id" required data-entity-select="vendor">
                     <option value="">Select vendor</option>
                     <?php foreach ($vendors as $vendor): ?>
                         <option value="<?= e($vendor['id']) ?>" <?= (string) old('vendor_id', (string) ($expense['vendor_id'] ?? '')) === (string) $vendor['id'] ? 'selected' : '' ?>><?= e($vendor['name']) ?></option>

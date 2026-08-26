@@ -41,6 +41,26 @@ final class Validator
         return $this;
     }
 
+    public function decimalPlaces(string $field, int $places, string $label): self
+    {
+        $value = trim((string) ($this->data[$field] ?? ''));
+        if ($value !== '' && is_numeric($value) && preg_match('/^-?(?:\d+|\d*\.\d{1,' . $places . '})$/D', $value) !== 1) {
+            $this->errors[$field] = "{$label} may have at most {$places} decimal places.";
+        }
+
+        return $this;
+    }
+
+    public function between(string $field, float $minimum, float $maximum, string $label): self
+    {
+        $value = $this->data[$field] ?? null;
+        if ($value !== null && $value !== '' && is_numeric($value) && ((float) $value < $minimum || (float) $value > $maximum)) {
+            $this->errors[$field] = "{$label} must be between {$minimum} and {$maximum}.";
+        }
+
+        return $this;
+    }
+
     public function integer(string $field, string $label): self
     {
         $value = $this->data[$field] ?? null;

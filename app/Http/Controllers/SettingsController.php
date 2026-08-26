@@ -45,6 +45,7 @@ final class SettingsController extends Controller
             'countries' => ReferenceData::countries(),
             'systemStatus' => (new SystemStatusService())->checks(),
             'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTaxId' => (int) $settingsService->get('default_tax_id', 0),
             'emailTemplates' => app()->db()->fetchAll('SELECT * FROM email_templates ORDER BY template_key'),
             'invoiceTemplates' => app()->db()->fetchAll('SELECT * FROM invoice_templates ORDER BY is_default DESC, name'),
             'users' => app()->db()->fetchAll('SELECT users.*, roles.name AS role_name FROM users INNER JOIN roles ON roles.id = users.role_id WHERE users.deleted_at IS NULL ORDER BY users.name'),
@@ -240,7 +241,9 @@ final class SettingsController extends Controller
             ->required('name', 'Tax name')
             ->max('name', 120, 'Tax name')
             ->required('rate', 'Tax rate')
-            ->numeric('rate', 'Tax rate');
+            ->numeric('rate', 'Tax rate')
+            ->decimalPlaces('rate', 2, 'Tax rate')
+            ->between('rate', 0, 100, 'Tax rate');
 
         if ($validator->fails()) {
             $this->backWithErrors($validator->errors(), $data);
@@ -253,6 +256,55 @@ final class SettingsController extends Controller
 
         AuditLogger::log('settings.tax_created');
         Session::flash('success', 'Tax setting added.');
+        $this->redirect('/settings');
+    }
+
+    public function setDefaultTax(Request $request): never
+    {
+        $taxId = trim((string) $request->input('tax_id', ''));
+        if ($taxId === '' || $taxId === '0') {
+            (new SettingsService())->set('default_tax_id', '');
+            AuditLogger::log('settings.default_tax_cleared');
+            Session::flash('success', 'New line items will default to 0% tax.');
+            $this->redirect('/settings');
+        }
+
+        if (filter_var($taxId, FILTER_VALIDATE_INT) === false) {
+            $this->backWithErrors(['tax_id' => 'Choose a valid active tax.'], $request->all());
+        }
+
+        $tax = app()->db()->fetch('SELECT id, name FROM taxes WHERE id = ? AND is_active = 1', [(int) $taxId]);
+        if (!$tax) {
+            $this->backWithErrors(['tax_id' => 'Choose a valid active tax.'], $request->all());
+        }
+
+        (new SettingsService())->set('default_tax_id', (string) $tax['id']);
+        AuditLogger::log('settings.default_tax_updated', 'tax', (int) $tax['id']);
+        Session::flash('success', $tax['name'] . ' is now the default tax for new line items.');
+        $this->redirect('/settings');
+    }
+
+    public function setTaxStatus(Request $request, string $id): never
+    {
+        $active = (string) $request->input('is_active', '');
+        $tax = app()->db()->fetch('SELECT id, name FROM taxes WHERE id = ?', [(int) $id]);
+        if (!$tax || !in_array($active, ['0', '1'], true)) {
+            Session::flash('errors', ['Tax setting not found or status is invalid.']);
+            $this->redirect('/settings');
+        }
+
+        app()->db()->transaction(function () use ($tax, $active): void {
+            app()->db()->execute('UPDATE taxes SET is_active = ?, updated_at = NOW() WHERE id = ?', [(int) $active, (int) $tax['id']]);
+            if ($active === '0') {
+                app()->db()->execute(
+                    "UPDATE settings SET setting_value = '', updated_at = NOW() WHERE setting_key = 'default_tax_id' AND setting_value = ?",
+                    [(string) $tax['id']]
+                );
+            }
+        });
+
+        AuditLogger::log($active === '1' ? 'settings.tax_restored' : 'settings.tax_deactivated', 'tax', (int) $tax['id']);
+        Session::flash('success', $tax['name'] . ($active === '1' ? ' restored.' : ' deactivated. Existing documents are unchanged.'));
         $this->redirect('/settings');
     }
 

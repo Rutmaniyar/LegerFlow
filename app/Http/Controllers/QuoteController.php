@@ -19,31 +19,49 @@ use App\Services\PdfService;
 use App\Services\SettingsService;
 use App\Support\Paginator;
 use App\Support\ReferenceData;
+use App\Support\TableSort;
 
 final class QuoteController extends Controller
 {
     public function index(Request $request): string
     {
         $page = Paginator::page($request->input('page', 1));
+        $sorting = TableSort::resolve($request->input('sort'), $request->input('direction'), [
+            'quote_number' => ['column' => 'quotes.quote_number', 'default' => 'asc'],
+            'client' => ['column' => 'clients.name', 'default' => 'asc'],
+            'status' => ['column' => 'quotes.status', 'default' => 'asc'],
+            'issue_date' => ['column' => 'quotes.issue_date', 'default' => 'desc'],
+            'valid_until' => ['column' => 'quotes.valid_until', 'default' => 'desc', 'nulls_last' => true],
+            'total' => ['column' => 'quotes.total', 'default' => 'desc'],
+        ], 'issue_date');
         $total = (int) (app()->db()->fetch('SELECT COUNT(*) AS count FROM quotes')['count'] ?? 0);
+        $nullsLast = $sorting['nulls_last'] ? "{$sorting['column']} IS NULL ASC, " : '';
         $quotes = app()->db()->fetchAll(
-            'SELECT quotes.*, clients.name AS client_name
+            "SELECT quotes.*, clients.name AS client_name
              FROM quotes INNER JOIN clients ON clients.id = quotes.client_id
-             ORDER BY quotes.issue_date DESC, quotes.id DESC LIMIT ' . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page)
+             ORDER BY {$nullsLast}{$sorting['column']} {$sorting['direction']}, quotes.id {$sorting['direction']} LIMIT " . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page)
         );
 
-        return $this->view('quotes/index', ['title' => 'Quotes', 'quotes' => $quotes, 'pagination' => Paginator::meta($total, $page)]);
+        return $this->view('quotes/index', [
+            'title' => 'Quotes',
+            'quotes' => $quotes,
+            'sort' => $sorting['key'],
+            'direction' => $sorting['direction'],
+            'pagination' => Paginator::meta($total, $page),
+        ]);
     }
 
     public function create(): string
     {
+        $settings = new SettingsService();
         return $this->view('quotes/form', [
             'title' => 'New Quote',
             'mode' => 'create',
             'clients' => app()->db()->fetchAll('SELECT id, name, currency FROM clients WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
-            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes WHERE is_active = 1 ORDER BY name'),
-            'business' => (new SettingsService())->business(),
+            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTax' => $settings->defaultTax(),
+            'business' => $settings->business(),
         ]);
     }
 
@@ -54,7 +72,7 @@ final class QuoteController extends Controller
         $currency = SignedOption::verify('currency', $data['currency'] ?? '', $currencyCodes);
         $data['currency'] = $currency ?? '';
         $clientSelection = trim((string) ($data['client_id'] ?? ''));
-        $createClient = $clientSelection === '__new__' || trim((string) ($data['new_client_name'] ?? '')) !== '';
+        $createClient = $clientSelection === '__new__';
         $clientId = null;
 
         $validator = (new Validator($data))
@@ -144,9 +162,9 @@ final class QuoteController extends Controller
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$quoteId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$quoteId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
 
@@ -203,6 +221,7 @@ final class QuoteController extends Controller
     public function edit(Request $request, string $id): string
     {
         $quote = $this->findDraftOrRedirect($id);
+        $settings = new SettingsService();
 
         return $this->view('quotes/form', [
             'title' => 'Edit ' . $quote['quote_number'],
@@ -211,8 +230,9 @@ final class QuoteController extends Controller
             'items' => app()->db()->fetchAll('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order', [(int) $id]),
             'clients' => app()->db()->fetchAll('SELECT id, name, currency FROM clients WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
-            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes WHERE is_active = 1 ORDER BY name'),
-            'business' => (new SettingsService())->business(),
+            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTax' => $settings->defaultTax(),
+            'business' => $settings->business(),
         ]);
     }
 
@@ -270,9 +290,9 @@ final class QuoteController extends Controller
             app()->db()->execute('DELETE FROM quote_items WHERE quote_id = ?', [(int) $id]);
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
         });

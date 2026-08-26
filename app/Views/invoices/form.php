@@ -2,6 +2,7 @@
 $mode = $mode ?? 'create';
 $invoice = $invoice ?? [];
 $items = $items ?? [];
+$items = old_line_items($items);
 $isEdit = $mode === 'edit';
 $selectedCurrency = (string) old('currency', $invoice['currency'] ?? $business['default_currency'] ?? 'USD');
 $formAction = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
@@ -13,7 +14,7 @@ $cancelHref = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
         <div class="grid gap-4 md:grid-cols-4">
             <label class="md:col-span-2">
                 <span class="label">Client</span>
-                <select class="field" name="client_id" data-client-select>
+                <select class="field" name="client_id" required data-entity-select="client"<?= !$isEdit ? ' data-allow-create' : '' ?>>
                     <option value="">Select client</option>
                     <?php if (!$isEdit): ?>
                         <option value="__new__" <?= old('client_id') === '__new__' ? 'selected' : '' ?>>Create new client</option>
@@ -81,10 +82,10 @@ $cancelHref = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
         <div id="invoice-lines" class="space-y-3">
             <?php if ($items !== []): ?>
                 <?php foreach ($items as $item): ?>
-                    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'item' => $item]); ?>
+                    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax, 'item' => $item]); ?>
                 <?php endforeach; ?>
             <?php else: ?>
-                <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes]); ?>
+                <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax]); ?>
             <?php endif; ?>
         </div>
     </section>
@@ -107,5 +108,5 @@ $cancelHref = $isEdit ? '/invoices/' . $invoice['id'] : '/invoices';
 </form>
 
 <template id="invoice-line-template">
-    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes]); ?>
+    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax]); ?>
 </template>

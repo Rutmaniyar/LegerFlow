@@ -15,22 +15,31 @@ use App\Services\PdfService;
 use App\Services\UploadService;
 use App\Support\Paginator;
 use App\Support\ReferenceData;
+use App\Support\TableSort;
 
 final class ExpenseController extends Controller
 {
     public function index(Request $request): string
     {
         $page = Paginator::page($request->input('page', 1));
+        $sorting = TableSort::resolve($request->input('sort'), $request->input('direction'), [
+            'expense_date' => ['column' => 'expenses.expense_date', 'default' => 'desc'],
+            'vendor' => ['column' => 'vendor_name', 'default' => 'asc'],
+            'category' => ['column' => 'expenses.category', 'default' => 'asc'],
+            'amount' => ['column' => 'expenses.amount', 'default' => 'desc'],
+        ], 'expense_date');
         $total = (int) (app()->db()->fetch('SELECT COUNT(*) AS count FROM expenses')['count'] ?? 0);
         return $this->view('expenses/index', [
             'title' => 'Expenses',
             'expenses' => app()->db()->fetchAll(
                 'SELECT expenses.*, COALESCE(vendors.name, expenses.vendor) AS vendor_name
                  FROM expenses LEFT JOIN vendors ON vendors.id = expenses.vendor_id
-                 ORDER BY expenses.expense_date DESC, expenses.id DESC LIMIT ' . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page)
+                 ORDER BY ' . $sorting['column'] . ' ' . $sorting['direction'] . ', expenses.id ' . $sorting['direction'] . ' LIMIT ' . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page)
             ),
             'vendors' => app()->db()->fetchAll('SELECT id, name FROM vendors WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
+            'sort' => $sorting['key'],
+            'direction' => $sorting['direction'],
             'pagination' => Paginator::meta($total, $page),
         ]);
     }
@@ -42,7 +51,7 @@ final class ExpenseController extends Controller
         $currency = SignedOption::verify('currency', $data['currency'] ?? '', $currencyCodes);
         $data['currency'] = $currency ?? '';
         $vendorSelection = trim((string) ($data['vendor_id'] ?? ''));
-        $createVendor = $vendorSelection === '__new__' || trim((string) ($data['new_vendor_name'] ?? '')) !== '';
+        $createVendor = $vendorSelection === '__new__';
 
         $validator = (new Validator($data))
             ->required('category', 'Category')

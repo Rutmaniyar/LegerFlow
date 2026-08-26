@@ -6,6 +6,8 @@
     </div>
     <div class="flex gap-2">
         <form method="get" action="/invoices">
+            <input type="hidden" name="sort" value="<?= e($sort) ?>">
+            <input type="hidden" name="direction" value="<?= e($direction) ?>">
             <label class="sr-only" for="status">Filter status</label>
             <select id="status" class="field" name="status" onchange="this.form.submit()">
                 <option value="">All statuses</option>
@@ -27,13 +29,23 @@
     </div>
     <div class="table-wrap">
         <table class="data-table">
-            <thead><tr><th>Invoice</th><th>Client</th><th>Status</th><th>Due</th><th class="text-right">Paid</th><th class="text-right">Balance</th><th class="text-right">Actions</th></tr></thead>
+            <thead><tr>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Invoice', 'key' => 'invoice_number', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Client', 'key' => 'client', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Status', 'key' => 'status', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Invoice date', 'key' => 'issue_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Due', 'key' => 'due_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Paid', 'key' => 'amount_paid', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status], 'class' => 'text-right', 'align' => 'right']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Balance', 'key' => 'balance_due', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status], 'class' => 'text-right', 'align' => 'right']); ?>
+                <th class="text-right">Actions</th>
+            </tr></thead>
             <tbody class="divide-y divide-ink-100">
                 <?php foreach ($invoices as $invoice): ?>
                     <tr>
                         <td><a class="font-bold text-brand-700" href="/invoices/<?= e($invoice['id']) ?>"><?= e($invoice['invoice_number']) ?></a></td>
                         <td><?= e($invoice['client_name']) ?></td>
                         <td><span class="badge <?= $invoice['status'] === 'overdue' ? 'bg-red-100 text-red-700' : ($invoice['status'] === 'paid' ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-700') ?>"><span class="status-dot mr-1.5"></span><?= e($invoice['status']) ?></span></td>
+                        <td><?= e($invoice['issue_date']) ?></td>
                         <td><?= e($invoice['due_date']) ?></td>
                         <td class="text-right"><?= money($invoice['amount_paid'], $invoice['currency']) ?></td>
                         <td class="text-right font-bold"><?= money($invoice['balance_due'], $invoice['currency']) ?></td>
@@ -51,7 +63,7 @@
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$invoices && $status === 'overdue'): ?>
-                    <tr><td colspan="7">
+                    <tr><td colspan="8">
                         <?php empty_state([
                             'variant' => 'success',
                             'title' => 'No overdue invoices',
@@ -61,7 +73,7 @@
                         ]) ?>
                     </td></tr>
                 <?php elseif (!$invoices && $status !== ''): ?>
-                    <tr><td colspan="7">
+                    <tr><td colspan="8">
                         <?php empty_state([
                             'variant' => 'filtered_results',
                             'title' => 'No ' . $status . ' invoices match this filter',
@@ -71,7 +83,7 @@
                         ]) ?>
                     </td></tr>
                 <?php elseif (!$invoices): ?>
-                    <tr><td colspan="7">
+                    <tr><td colspan="8">
                         <?php empty_state([
                             'icon' => 'invoices',
                             'title' => 'No invoices yet',
@@ -83,6 +95,6 @@
                 <?php endif; ?>
             </tbody>
         </table>
-        <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+        <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/invoices', 'query' => ['status' => $status, 'sort' => $sort, 'direction' => $direction]]); ?>
     </div>
 </section>

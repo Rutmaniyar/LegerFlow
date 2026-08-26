@@ -48,6 +48,7 @@ $router->get('/dashboard', [DashboardController::class, 'index'], ['auth', 'can:
 
 $router->get('/clients', [ClientController::class, 'index'], ['auth', 'can:clients.view']);
 $router->post('/clients', [ClientController::class, 'store'], ['auth', 'can:clients.manage', 'throttle:60,1', 'csrf']);
+$router->get('/clients/search', [ClientController::class, 'search'], ['auth', 'can:clients.view']);
 $router->get('/clients/{id}', [ClientController::class, 'show'], ['auth', 'can:clients.view']);
 $router->post('/clients/{id}', [ClientController::class, 'update'], ['auth', 'can:clients.manage', 'throttle:60,1', 'csrf']);
 $router->post('/clients/{id}/anonymize', [ClientController::class, 'anonymize'], ['auth', 'can:clients.manage', 'throttle:10,5', 'csrf']);
@@ -82,6 +83,7 @@ $router->get('/recurring', [RecurringController::class, 'index'], ['auth', 'can:
 $router->post('/recurring', [RecurringController::class, 'store'], ['auth', 'can:invoices.manage', 'throttle:30,1', 'csrf']);
 $router->get('/vendors', [VendorController::class, 'index'], ['auth', 'can:expenses.manage']);
 $router->post('/vendors', [VendorController::class, 'store'], ['auth', 'can:expenses.manage', 'throttle:60,1', 'csrf']);
+$router->get('/vendors/search', [VendorController::class, 'search'], ['auth', 'can:expenses.manage']);
 $router->get('/vendors/{id}', [VendorController::class, 'show'], ['auth', 'can:expenses.manage']);
 $router->post('/vendors/{id}', [VendorController::class, 'update'], ['auth', 'can:expenses.manage', 'throttle:60,1', 'csrf']);
 $router->get('/expenses', [ExpenseController::class, 'index'], ['auth', 'can:expenses.manage']);
@@ -100,6 +102,8 @@ $router->post('/settings/general', [SettingsController::class, 'updateGeneral'],
 $router->post('/settings/mail', [SettingsController::class, 'updateMail'], ['auth', 'can:settings.manage', 'throttle:20,5', 'csrf']);
 $router->post('/settings/mail/test', [SettingsController::class, 'testMail'], ['auth', 'can:settings.manage', 'throttle:5,5', 'csrf']);
 $router->post('/settings/taxes', [SettingsController::class, 'addTax'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
+$router->post('/settings/taxes/default', [SettingsController::class, 'setDefaultTax'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
+$router->post('/settings/taxes/{id}/status', [SettingsController::class, 'setTaxStatus'], ['auth', 'can:settings.manage', 'throttle:30,1', 'csrf']);
 $router->post('/settings/users', [SettingsController::class, 'addUser'], ['auth', 'can:settings.manage', 'throttle:20,5', 'csrf']);
 
 $router->post('/settings/update/check', [UpdateController::class, 'check'], ['auth', 'can:system.update', 'throttle:10,5', 'csrf']);

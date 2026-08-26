@@ -44,7 +44,7 @@
         <?= csrf_field() ?>
         <h2 class="text-lg font-black text-ink-900">Add vendor</h2>
         <div class="mt-5 space-y-4">
-            <label><span class="label">Vendor name *</span><input class="field" name="name" required maxlength="190" value="<?= e(old('name')) ?>"></label>
+            <label><span class="label">Vendor name *</span><input class="field" name="name" required maxlength="190" value="<?= e(old('name')) ?>" autocomplete="organization" data-entity-name-lookup="vendor"></label>
             <label><span class="label">Contact name</span><input class="field" name="contact_name" maxlength="190" value="<?= e(old('contact_name')) ?>"></label>
             <label><span class="label">Email</span><input class="field" name="email" type="email" maxlength="190" value="<?= e(old('email')) ?>"></label>
             <label><span class="label">Phone</span><input class="field" name="phone" maxlength="80" value="<?= e(old('phone')) ?>"></label>

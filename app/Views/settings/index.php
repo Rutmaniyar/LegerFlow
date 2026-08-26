@@ -119,7 +119,7 @@ $systemIssues = array_values(array_filter($systemStatus, static fn (array $check
                 <h2 class="text-lg font-black text-ink-900">Add tax</h2>
                 <div class="mt-5 space-y-4">
                     <label><span class="label">Name</span><input class="field" name="name" required></label>
-                    <label><span class="label">Rate %</span><input class="field" name="rate" type="number" step="0.0001" min="0" required></label>
+                    <label><span class="label">Rate %</span><input class="field" name="rate" type="number" step="0.01" min="0" max="100" required><span class="field-help">Use up to two decimal places.</span></label>
                     <label><span class="label">Registration number</span><input class="field" name="registration_number"></label>
                     <label class="flex items-center gap-2 text-sm font-semibold text-ink-700"><input class="h-4 w-4 rounded border-ink-300 text-brand-600" name="is_compound" type="checkbox"> Compound tax</label>
                 </div>
@@ -160,11 +160,37 @@ $systemIssues = array_values(array_filter($systemStatus, static fn (array $check
     <div class="grid gap-6 xl:grid-cols-2">
         <div class="card p-5">
             <h2 class="text-lg font-black text-ink-900">Taxes</h2>
+            <form method="post" action="/settings/taxes/default" class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <?= csrf_field() ?>
+                <label class="min-w-0 flex-1">
+                    <span class="label">Default tax for new line items</span>
+                    <select class="field" name="tax_id">
+                        <option value="0" <?= $defaultTaxId === 0 ? 'selected' : '' ?>>No default (0%)</option>
+                        <?php foreach ($taxes as $tax): ?>
+                            <?php if ($tax['is_active']): ?><option value="<?= e($tax['id']) ?>" <?= $defaultTaxId === (int) $tax['id'] ? 'selected' : '' ?>><?= e($tax['name']) ?> · <?= percentage($tax['rate']) ?></option><?php endif; ?>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button class="btn-secondary">Save default</button>
+            </form>
             <div class="mt-5 table-wrap">
                 <table class="data-table">
-                    <thead><tr><th>Name</th><th>Rate</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Name</th><th>Rate</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
                     <tbody class="divide-y divide-ink-100">
-                        <?php foreach ($taxes as $tax): ?><tr><td class="font-bold"><?= e($tax['name']) ?></td><td><?= percentage($tax['rate']) ?></td><td><?= $tax['is_active'] ? 'Active' : 'Inactive' ?></td></tr><?php endforeach; ?>
+                        <?php foreach ($taxes as $tax): ?>
+                            <tr>
+                                <td class="font-bold"><?= e($tax['name']) ?><?php if ($defaultTaxId === (int) $tax['id']): ?> <span class="badge bg-brand-100 text-brand-700">Default</span><?php endif; ?></td>
+                                <td><?= percentage($tax['rate']) ?></td>
+                                <td><span class="badge <?= $tax['is_active'] ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-600' ?>"><?= $tax['is_active'] ? 'Active' : 'Inactive' ?></span></td>
+                                <td class="text-right">
+                                    <form method="post" action="/settings/taxes/<?= e($tax['id']) ?>/status"<?= $tax['is_active'] ? ' onsubmit="return confirm(\'Deactivate this tax? Existing documents will keep their saved tax rate.\')"' : '' ?>>
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="is_active" value="<?= $tax['is_active'] ? '0' : '1' ?>">
+                                        <button class="btn-secondary h-8 px-2.5 text-xs"><?= $tax['is_active'] ? 'Deactivate' : 'Restore' ?></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
                 <div class="table-footer"><span><?= e(count($taxes)) ?> tax rules</span><span>VAT/GST ready</span></div>

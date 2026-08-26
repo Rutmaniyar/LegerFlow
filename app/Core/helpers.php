@@ -142,6 +142,34 @@ function old(string $key, mixed $default = ''): mixed
     return $cache[$key] ?? $default;
 }
 
+function old_line_items(array $fallback = []): array
+{
+    $descriptions = old('item_description', null);
+    if (!is_array($descriptions)) {
+        return $fallback;
+    }
+
+    $quantities = (array) old('item_quantity', []);
+    $prices = (array) old('item_unit_price', []);
+    $discountTypes = (array) old('item_discount_type', []);
+    $discountValues = (array) old('item_discount_value', []);
+    $taxRates = (array) old('item_tax_rate', []);
+    $items = [];
+
+    foreach (array_slice($descriptions, 0, 200, true) as $index => $description) {
+        $items[] = [
+            'description' => $description,
+            'quantity' => $quantities[$index] ?? '1',
+            'unit_price' => $prices[$index] ?? '0.00',
+            'discount_type' => $discountTypes[$index] ?? 'percent',
+            'discount_value' => $discountValues[$index] ?? '0',
+            'tax_rate' => $taxRates[$index] ?? '0',
+        ];
+    }
+
+    return $items;
+}
+
 function flash(string $key): mixed
 {
     return Session::pull($key);
@@ -174,6 +202,8 @@ function icon(string $name, string $class = 'h-4 w-4'): string
         'check' => '<path d="m5 13 4 4L19 7"/>',
         'warning' => '<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5M12 17h.01"/>',
         'search' => '<path d="m21 21-4.3-4.3"/><circle cx="11" cy="11" r="8"/>',
+        'arrow-up' => '<path d="M12 19V5m0 0-5 5m5-5 5 5"/>',
+        'arrow-down' => '<path d="M12 5v14m0 0 5-5m-5 5-5-5"/>',
         'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
         'x' => '<path d="M18 6 6 18M6 6l12 12"/>',
         'user' => '<path d="M19 21a7 7 0 0 0-14 0"/><circle cx="12" cy="7" r="4"/>',

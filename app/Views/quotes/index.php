@@ -9,13 +9,22 @@
     </div>
     <div class="table-wrap">
         <table class="data-table">
-            <thead><tr><th>Quote</th><th>Client</th><th>Status</th><th>Valid until</th><th class="text-right">Total</th><th class="text-right">Actions</th></tr></thead>
+            <thead><tr>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Quote', 'key' => 'quote_number', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/quotes']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Client', 'key' => 'client', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/quotes']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Status', 'key' => 'status', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/quotes']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Quote date', 'key' => 'issue_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/quotes']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Valid until', 'key' => 'valid_until', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/quotes']); ?>
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Total', 'key' => 'total', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/quotes', 'class' => 'text-right', 'align' => 'right']); ?>
+                <th class="text-right">Actions</th>
+            </tr></thead>
             <tbody class="divide-y divide-ink-100">
                 <?php foreach ($quotes as $quote): ?>
                     <tr>
                         <td><a class="font-bold text-brand-700" href="/quotes/<?= e($quote['id']) ?>"><?= e($quote['quote_number']) ?></a></td>
                         <td><?= e($quote['client_name']) ?></td>
                         <td><span class="badge bg-ink-100 text-ink-700"><?= e($quote['status']) ?></span></td>
+                        <td><?= e($quote['issue_date']) ?></td>
                         <td><?= e($quote['valid_until']) ?></td>
                         <td class="text-right font-bold"><?= money($quote['total'], $quote['currency']) ?></td>
                         <td class="text-right">
@@ -32,7 +41,7 @@
                     </tr>
                 <?php endforeach; ?>
                 <?php if (!$quotes): ?>
-                    <tr><td colspan="6">
+                    <tr><td colspan="7">
                         <?php empty_state([
                             'icon' => 'quotes',
                             'title' => 'No quotes yet',
@@ -44,6 +53,6 @@
                 <?php endif; ?>
             </tbody>
         </table>
-        <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/quotes']); ?>
+        <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/quotes', 'query' => ['sort' => $sort, 'direction' => $direction]]); ?>
     </div>
 </section>

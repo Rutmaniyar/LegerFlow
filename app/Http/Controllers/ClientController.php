@@ -43,6 +43,33 @@ final class ClientController extends Controller
         ]);
     }
 
+    public function search(Request $request): never
+    {
+        $query = trim((string) $request->input('q', ''));
+        if (mb_strlen($query) < 2 || mb_strlen($query) > 190) {
+            header('Cache-Control: private, no-store');
+            Response::json(['results' => []]);
+        }
+
+        $results = app()->db()->fetchAll(
+            'SELECT id, name, contact_name, email, currency
+             FROM clients
+             WHERE deleted_at IS NULL AND name LIKE ?
+             ORDER BY CASE WHEN name = ? THEN 0 WHEN name LIKE ? THEN 1 ELSE 2 END, name
+             LIMIT 8',
+            ['%' . $query . '%', $query, $query . '%']
+        );
+
+        header('Cache-Control: private, no-store');
+        Response::json(['results' => array_map(static fn (array $client): array => [
+            'id' => (int) $client['id'],
+            'name' => $client['name'],
+            'contact_name' => $client['contact_name'],
+            'email' => $client['email'],
+            'currency' => $client['currency'],
+        ], $results)]);
+    }
+
     public function store(Request $request): never
     {
         $data = $request->all();

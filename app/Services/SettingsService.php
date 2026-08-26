@@ -27,6 +27,16 @@ final class SettingsService
         return app()->db()->fetch('SELECT * FROM business_settings ORDER BY id LIMIT 1') ?? [];
     }
 
+    public function defaultTax(): ?array
+    {
+        $taxId = (int) $this->get('default_tax_id', 0);
+        if ($taxId <= 0) {
+            return null;
+        }
+
+        return app()->db()->fetch('SELECT * FROM taxes WHERE id = ? AND is_active = 1', [$taxId]) ?: null;
+    }
+
     public function updateBusiness(array $data): void
     {
         app()->db()->execute(

@@ -365,7 +365,11 @@ final class InstallerService
             ]
         );
 
-        $db->execute('INSERT IGNORE INTO taxes (name, rate, is_active) VALUES (?, ?, 1)', ['Standard Tax', (float) ($data['tax_rate'] ?? 0)]);
+        $taxRate = round((float) ($data['tax_rate'] ?? 0), 2);
+        $db->execute('INSERT IGNORE INTO taxes (name, rate, is_active) VALUES (?, ?, 1)', ['Standard Tax', $taxRate]);
+        $defaultTax = $taxRate > 0
+            ? $db->fetch('SELECT id FROM taxes WHERE name = ? AND rate = ? ORDER BY id LIMIT 1', ['Standard Tax', $taxRate])
+            : null;
 
         $settings = [
             'invoice_prefix' => 'INV-',
@@ -378,6 +382,7 @@ final class InstallerService
             'recurring_cron_token' => bin2hex(random_bytes(24)),
             'cookie_banner_enabled' => '1',
             'data_retention_years' => '7',
+            'default_tax_id' => (string) ($defaultTax['id'] ?? ''),
         ];
 
         foreach ($settings as $key => $value) {

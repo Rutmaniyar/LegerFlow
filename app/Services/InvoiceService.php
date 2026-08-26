@@ -163,9 +163,9 @@ final class InvoiceService
             $items = app()->db()->fetchAll('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order', [$quoteId]);
             foreach ($items as $item) {
                 app()->db()->execute(
-                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
 

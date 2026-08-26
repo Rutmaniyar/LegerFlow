@@ -137,7 +137,7 @@ $selectedCountry = (string) old('business_country', '');
                     </label>
                     <label>
                         <span class="label">Default tax rate</span>
-                        <input class="field" name="tax_rate" type="number" step="0.0001" min="0" value="<?= e(old('tax_rate', '0')) ?>">
+                        <input class="field" name="tax_rate" type="number" step="0.01" min="0" max="100" value="<?= e(old('tax_rate', '0')) ?>">
                     </label>
                 </div>
             </div>

@@ -13,12 +13,14 @@ use App\Core\Validator;
 use App\Services\AuditLogger;
 use App\Services\InvoiceCalculator;
 use App\Services\NumberGenerator;
+use App\Services\SettingsService;
 use App\Support\ReferenceData;
 
 final class RecurringController extends Controller
 {
     public function index(): string
     {
+        $settings = new SettingsService();
         return $this->view('recurring/index', [
             'title' => 'Recurring invoices',
             'recurring' => app()->db()->fetchAll(
@@ -28,7 +30,8 @@ final class RecurringController extends Controller
             ),
             'clients' => app()->db()->fetchAll('SELECT id, name, currency FROM clients WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
-            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes WHERE is_active = 1 ORDER BY name'),
+            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTax' => $settings->defaultTax(),
         ]);
     }
 
@@ -82,9 +85,9 @@ final class RecurringController extends Controller
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO recurring_invoice_items (recurring_invoice_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO recurring_invoice_items (recurring_invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
 
@@ -134,9 +137,9 @@ final class RecurringController extends Controller
                 $items = app()->db()->fetchAll('SELECT * FROM recurring_invoice_items WHERE recurring_invoice_id = ? ORDER BY sort_order', [$recurring['id']]);
                 foreach ($items as $item) {
                     app()->db()->execute(
-                        'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                        [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                        'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                     );
                 }
 

@@ -8,7 +8,13 @@
         </div>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th class="text-right">Amount</th><th class="text-right">Actions</th></tr></thead>
+                <thead><tr>
+                    <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Date', 'key' => 'expense_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/expenses']); ?>
+                    <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Vendor', 'key' => 'vendor', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/expenses']); ?>
+                    <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Category', 'key' => 'category', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/expenses']); ?>
+                    <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Amount', 'key' => 'amount', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/expenses', 'class' => 'text-right', 'align' => 'right']); ?>
+                    <th class="text-right">Actions</th>
+                </tr></thead>
                 <tbody class="divide-y divide-ink-100">
                     <?php foreach ($expenses as $expense): ?>
                         <tr>
@@ -37,7 +43,7 @@
                     <?php endif; ?>
                 </tbody>
             </table>
-            <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/expenses']); ?>
+            <?php \App\Core\View::partial('partials/pagination', ['pagination' => $pagination, 'path' => '/expenses', 'query' => ['sort' => $sort, 'direction' => $direction]]); ?>
         </div>
     </div>
 
@@ -47,7 +53,7 @@
         <div class="mt-5 space-y-4">
             <label>
                 <span class="label">Vendor *</span>
-                <select class="field" name="vendor_id" required data-vendor-select>
+                <select class="field" name="vendor_id" required data-entity-select="vendor" data-allow-create>
                     <option value="">Select vendor</option>
                     <option value="__new__" <?= old('vendor_id') === '__new__' ? 'selected' : '' ?>>Create new vendor</option>
                     <?php foreach ($vendors as $vendor): ?>

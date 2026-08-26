@@ -1,4 +1,7 @@
-<?php $selectedCurrency = (string) old('currency', 'USD'); ?>
+<?php
+$selectedCurrency = (string) old('currency', 'USD');
+$items = old_line_items([]);
+?>
 <section class="grid gap-6 xl:grid-cols-[1.2fr_1fr]" data-motion="fade-up" data-motion-stagger>
     <div class="card p-5">
         <h2 class="text-lg font-black text-ink-900">Schedules</h2>
@@ -35,7 +38,7 @@
         <?= csrf_field() ?>
         <h2 class="text-lg font-black text-ink-900">Create schedule</h2>
         <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            <label class="sm:col-span-2"><span class="label">Client</span><select class="field" name="client_id" required><option value="">Select client</option><?php foreach ($clients as $client): ?><option value="<?= e($client['id']) ?>"><?= e($client['name']) ?></option><?php endforeach; ?></select></label>
+            <label class="sm:col-span-2"><span class="label">Client</span><select class="field" name="client_id" required data-entity-select="client"><option value="">Select client</option><?php foreach ($clients as $client): ?><option value="<?= e($client['id']) ?>"><?= e($client['name']) ?></option><?php endforeach; ?></select></label>
             <label><span class="label">Frequency</span><select class="field" name="frequency"><option value="weekly">Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label>
             <label><span class="label">Currency</span><select class="field" name="currency" required><?php foreach ($currencies as $currency): ?><option value="<?= e(secure_option('currency', $currency['code'])) ?>" <?= secure_option_selected('currency', $selectedCurrency, $currency['code']) ?>><?= e($currency['code']) ?> - <?= e($currency['name'] ?? $currency['code']) ?></option><?php endforeach; ?></select></label>
             <label><span class="label">Next run</span><input class="field" name="next_run_date" type="date" value="<?= e(date('Y-m-d', strtotime('+1 month'))) ?>" required></label>
@@ -48,7 +51,11 @@
                 <button type="button" class="btn-secondary" data-add-line="#recurring-lines" data-template="#recurring-line-template"><?= icon('plus') ?> Add</button>
             </div>
             <div id="recurring-lines" class="space-y-3">
-                <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes]); ?>
+                <?php if ($items): ?>
+                    <?php foreach ($items as $item): ?><?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax, 'item' => $item]); ?><?php endforeach; ?>
+                <?php else: ?>
+                    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax]); ?>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -59,5 +66,5 @@
 </section>
 
 <template id="recurring-line-template">
-    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes]); ?>
+    <?php \App\Core\View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $defaultTax]); ?>
 </template>

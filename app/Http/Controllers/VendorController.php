@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Core\Controller;
 use App\Core\Request;
+use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\AuditLogger;
@@ -36,6 +37,32 @@ final class VendorController extends Controller
             'search' => $search,
             'pagination' => Paginator::meta($total, $page),
         ]);
+    }
+
+    public function search(Request $request): never
+    {
+        $query = trim((string) $request->input('q', ''));
+        if (mb_strlen($query) < 2 || mb_strlen($query) > 190) {
+            header('Cache-Control: private, no-store');
+            Response::json(['results' => []]);
+        }
+
+        $results = app()->db()->fetchAll(
+            'SELECT id, name, contact_name, email
+             FROM vendors
+             WHERE deleted_at IS NULL AND name LIKE ?
+             ORDER BY CASE WHEN name = ? THEN 0 WHEN name LIKE ? THEN 1 ELSE 2 END, name
+             LIMIT 8',
+            ['%' . $query . '%', $query, $query . '%']
+        );
+
+        header('Cache-Control: private, no-store');
+        Response::json(['results' => array_map(static fn (array $vendor): array => [
+            'id' => (int) $vendor['id'],
+            'name' => $vendor['name'],
+            'contact_name' => $vendor['contact_name'],
+            'email' => $vendor['email'],
+        ], $results)]);
     }
 
     public function store(Request $request): never

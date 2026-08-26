@@ -2,6 +2,7 @@ module.exports = {
   content: [
     './app/Views/**/*.php',
     './public/**/*.php',
+    './public/**/*.js',
     './app/Core/**/*.php'
   ],
   theme: {

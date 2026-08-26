@@ -19,6 +19,7 @@ use App\Services\PdfService;
 use App\Services\SettingsService;
 use App\Support\Paginator;
 use App\Support\ReferenceData;
+use App\Support\TableSort;
 
 final class InvoiceController extends Controller
 {
@@ -26,6 +27,15 @@ final class InvoiceController extends Controller
     {
         $status = (string) $request->input('status', '');
         $page = Paginator::page($request->input('page', 1));
+        $sorting = TableSort::resolve($request->input('sort'), $request->input('direction'), [
+            'invoice_number' => ['column' => 'invoices.invoice_number', 'default' => 'asc'],
+            'client' => ['column' => 'clients.name', 'default' => 'asc'],
+            'status' => ['column' => 'invoices.status', 'default' => 'asc'],
+            'issue_date' => ['column' => 'invoices.issue_date', 'default' => 'desc'],
+            'due_date' => ['column' => 'invoices.due_date', 'default' => 'desc'],
+            'amount_paid' => ['column' => 'invoices.amount_paid', 'default' => 'desc'],
+            'balance_due' => ['column' => 'invoices.balance_due', 'default' => 'desc'],
+        ], 'issue_date');
         $params = [];
         $where = '1 = 1';
         if ($status !== '') {
@@ -38,7 +48,7 @@ final class InvoiceController extends Controller
             "SELECT invoices.*, clients.name AS client_name
              FROM invoices INNER JOIN clients ON clients.id = invoices.client_id
              WHERE {$where}
-             ORDER BY invoices.issue_date DESC, invoices.id DESC LIMIT " . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page),
+             ORDER BY {$sorting['column']} {$sorting['direction']}, invoices.id {$sorting['direction']} LIMIT " . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page),
             $params
         );
 
@@ -46,20 +56,24 @@ final class InvoiceController extends Controller
             'title' => 'Invoices',
             'invoices' => $invoices,
             'status' => $status,
+            'sort' => $sorting['key'],
+            'direction' => $sorting['direction'],
             'pagination' => Paginator::meta($total, $page),
         ]);
     }
 
     public function create(): string
     {
+        $settings = new SettingsService();
         return $this->view('invoices/form', [
             'title' => 'New Invoice',
             'mode' => 'create',
             'clients' => app()->db()->fetchAll('SELECT id, name, currency FROM clients WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
-            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes WHERE is_active = 1 ORDER BY name'),
-            'business' => (new SettingsService())->business(),
-            'defaultTerms' => (new SettingsService())->get('default_invoice_terms', 'Payment is due by the due date shown on this invoice.'),
+            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTax' => $settings->defaultTax(),
+            'business' => $settings->business(),
+            'defaultTerms' => $settings->get('default_invoice_terms', 'Payment is due by the due date shown on this invoice.'),
         ]);
     }
 
@@ -81,6 +95,7 @@ final class InvoiceController extends Controller
     public function edit(Request $request, string $id): string
     {
         $invoice = $this->findDraftOrRedirect($id);
+        $settings = new SettingsService();
 
         return $this->view('invoices/form', [
             'title' => 'Edit ' . $invoice['invoice_number'],
@@ -89,9 +104,10 @@ final class InvoiceController extends Controller
             'items' => app()->db()->fetchAll('SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY sort_order', [(int) $id]),
             'clients' => app()->db()->fetchAll('SELECT id, name, currency FROM clients WHERE deleted_at IS NULL ORDER BY name'),
             'currencies' => app()->db()->fetchAll('SELECT * FROM currencies WHERE is_active = 1 ORDER BY code'),
-            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes WHERE is_active = 1 ORDER BY name'),
-            'business' => (new SettingsService())->business(),
-            'defaultTerms' => (new SettingsService())->get('default_invoice_terms', 'Payment is due by the due date shown on this invoice.'),
+            'taxes' => app()->db()->fetchAll('SELECT * FROM taxes ORDER BY is_active DESC, name'),
+            'defaultTax' => $settings->defaultTax(),
+            'business' => $settings->business(),
+            'defaultTerms' => $settings->get('default_invoice_terms', 'Payment is due by the due date shown on this invoice.'),
         ]);
     }
 
@@ -156,9 +172,9 @@ final class InvoiceController extends Controller
             app()->db()->execute('DELETE FROM invoice_items WHERE invoice_id = ?', [(int) $id]);
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
         });
@@ -184,7 +200,7 @@ final class InvoiceController extends Controller
         $currency = SignedOption::verify('currency', $data['currency'] ?? '', $currencyCodes);
         $data['currency'] = $currency ?? '';
         $clientSelection = trim((string) ($data['client_id'] ?? ''));
-        $createClient = $clientSelection === '__new__' || trim((string) ($data['new_client_name'] ?? '')) !== '';
+        $createClient = $clientSelection === '__new__';
         $clientId = null;
 
         $validator = (new Validator($data))
@@ -277,9 +293,9 @@ final class InvoiceController extends Controller
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_rate, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_rate'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
                 );
             }
 

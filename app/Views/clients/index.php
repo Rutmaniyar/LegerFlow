@@ -75,7 +75,7 @@
             </label>
             <label>
                 <span class="label">Client name *</span>
-                <input class="field" name="name" required>
+                <input class="field" name="name" required maxlength="190" autocomplete="organization" data-entity-name-lookup="client">
             </label>
             <label>
                 <span class="label">Contact name</span>
