@@ -23,61 +23,79 @@ use App\Support\TableSort;
 
 final class InvoiceController extends Controller
 {
-    public function index(Request $request): string
-    {
-        $status = (string) $request->input('status', '');
-        $page = Paginator::page($request->input('page', 1));
-        $sorting = TableSort::resolve($request->input('sort'), $request->input('direction'), [
+    
+public function index(Request $request): string
+{
+    $status = (string) $request->input('status', '');
+    $page = Paginator::page($request->input('page', 1));
+
+    $sorting = TableSort::resolve(
+        $request->input('sort'),
+        $request->input('direction'),
+        [
             'invoice_number' => ['column' => 'invoices.invoice_number', 'default' => 'asc'],
             'client' => ['column' => 'clients.name', 'default' => 'asc'],
             'status' => ['column' => 'invoices.status', 'default' => 'asc'],
             'issue_date' => ['column' => 'invoices.issue_date', 'default' => 'desc'],
-            'Pay_date' => ['column' => 'latest_payment.payment_date', 'default' => 'desc'],
+            'payment_date' => ['column' => 'latest_payment.payment_date', 'default' => 'desc'],
             'amount_paid' => ['column' => 'invoices.amount_paid', 'default' => 'desc'],
             'balance_due' => ['column' => 'invoices.balance_due', 'default' => 'desc'],
-        ], 'payment_date');
-        $params = [];
-        $where = '1 = 1';
-        if ($status !== '') {
-            $where .= ' AND invoices.status = ?';
-            $params[] = $status;
-        }
+        ],
+        'payment_date'
+    );
 
-        $total = (int) (app()->db()->fetch("SELECT COUNT(*) AS count FROM invoices WHERE {$where}", $params)['count'] ?? 0);
-        
-        $invoices = app()->db()->fetchAll(
-            "SELECT invoices.*,
-                    clients.name AS client_name,
-                    latest_payment.payment_date AS payment_date
-            FROM invoices
-            INNER JOIN clients
-                ON clients.id = invoices.client_id
-            LEFT JOIN (
-                SELECT invoice_id,
-                        MAX(payment_date) AS payment_date
-                FROM payments
-                WHERE type IS NULL OR type <> 'refund'
-                GROUP BY invoice_id
-            ) AS latest_payment
-                ON latest_payment.invoice_id = invoices.id
-            WHERE {$where}
-            ORDER BY {$sorting['column']} {$sorting['direction']},
-                    invoices.id {$sorting['direction']}
-            LIMIT " . Paginator::perPage() .
-            ' OFFSET ' . Paginator::offset($page),
-            $params
-        );
+    $params = [];
+    $where = '1 = 1';
 
-
-        return $this->view('invoices/index', [
-            'title' => 'Invoices',
-            'invoices' => $invoices,
-            'status' => $status,
-            'sort' => $sorting['key'],
-            'direction' => $sorting['direction'],
-            'pagination' => Paginator::meta($total, $page),
-        ]);
+    if ($status !== '') {
+        $where .= ' AND invoices.status = ?';
+        $params[] = $status;
     }
+
+    $total = (int) (
+        app()->db()->fetch(
+            "SELECT COUNT(*) AS count FROM invoices WHERE {$where}",
+            $params
+        )['count'] ?? 0
+    );
+
+    $orderColumn = $sorting['column'];
+    $orderDirection = $sorting['direction'];
+
+    $invoices = app()->db()->fetchAll(
+        "SELECT invoices.*,
+                clients.name AS client_name,
+                latest_payment.payment_date AS payment_date
+         FROM invoices
+         INNER JOIN clients
+             ON clients.id = invoices.client_id
+         LEFT JOIN (
+             SELECT invoice_id,
+                    MAX(payment_date) AS payment_date
+             FROM payments
+             WHERE type IS NULL OR type <> 'refund'
+             GROUP BY invoice_id
+         ) AS latest_payment
+             ON latest_payment.invoice_id = invoices.id
+         WHERE {$where}
+         ORDER BY
+             {$orderColumn} {$orderDirection},
+             invoices.id DESC
+         LIMIT " . Paginator::perPage() .
+         ' OFFSET ' . Paginator::offset($page),
+        $params
+    );
+
+    return $this->view('invoices/index', [
+        'title' => 'Invoices',
+        'invoices' => $invoices,
+        'status' => $status,
+        'sort' => $sorting['key'],
+        'direction' => $sorting['direction'],
+        'pagination' => Paginator::meta($total, $page),
+    ]);
+}
+
 
     public function create(): string
     {
