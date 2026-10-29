@@ -34,7 +34,9 @@
                 <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Client', 'key' => 'client', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
                 <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Status', 'key' => 'status', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'asc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
                 <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Invoice date', 'key' => 'issue_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
-                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Due', 'key' => 'due_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+                
+                <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Payment Date', 'key' => 'payment_date', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status]]); ?>
+
                 <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Paid', 'key' => 'amount_paid', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status], 'class' => 'text-right', 'align' => 'right']); ?>
                 <?php \App\Core\View::partial('partials/sortable-heading', ['label' => 'Balance', 'key' => 'balance_due', 'sort' => $sort, 'direction' => $direction, 'defaultDirection' => 'desc', 'path' => '/invoices', 'query' => ['status' => $status], 'class' => 'text-right', 'align' => 'right']); ?>
                 <th class="text-right">Actions</th>
@@ -46,7 +48,7 @@
                         <td><?= e($invoice['client_name']) ?></td>
                         <td><span class="badge <?= $invoice['status'] === 'overdue' ? 'bg-red-100 text-red-700' : ($invoice['status'] === 'paid' ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-700') ?>"><span class="status-dot mr-1.5"></span><?= e($invoice['status']) ?></span></td>
                         <td><?= e($invoice['issue_date']) ?></td>
-                        <td><?= e($invoice['due_date']) ?></td>
+                        <td><?= e($invoice['payment_date']) ?></td>
                         <td class="text-right"><?= money($invoice['amount_paid'], $invoice['currency']) ?></td>
                         <td class="text-right font-bold"><?= money($invoice['balance_due'], $invoice['currency']) ?></td>
                         <td class="text-right">

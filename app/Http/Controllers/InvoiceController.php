@@ -32,7 +32,7 @@ final class InvoiceController extends Controller
             'client' => ['column' => 'clients.name', 'default' => 'asc'],
             'status' => ['column' => 'invoices.status', 'default' => 'asc'],
             'issue_date' => ['column' => 'invoices.issue_date', 'default' => 'desc'],
-            'due_date' => ['column' => 'invoices.due_date', 'default' => 'desc'],
+            'Pay_date' => ['column' => 'latest_payment.payment_date', 'default' => 'desc'],
             'amount_paid' => ['column' => 'invoices.amount_paid', 'default' => 'desc'],
             'balance_due' => ['column' => 'invoices.balance_due', 'default' => 'desc'],
         ], 'issue_date');
@@ -44,13 +44,30 @@ final class InvoiceController extends Controller
         }
 
         $total = (int) (app()->db()->fetch("SELECT COUNT(*) AS count FROM invoices WHERE {$where}", $params)['count'] ?? 0);
+        
         $invoices = app()->db()->fetchAll(
-            "SELECT invoices.*, clients.name AS client_name
-             FROM invoices INNER JOIN clients ON clients.id = invoices.client_id
-             WHERE {$where}
-             ORDER BY {$sorting['column']} {$sorting['direction']}, invoices.id {$sorting['direction']} LIMIT " . Paginator::perPage() . ' OFFSET ' . Paginator::offset($page),
+            "SELECT invoices.*,
+                    clients.name AS client_name,
+                    latest_payment.payment_date AS payment_date
+            FROM invoices
+            INNER JOIN clients
+                ON clients.id = invoices.client_id
+            LEFT JOIN (
+                SELECT invoice_id,
+                        MAX(payment_date) AS payment_date
+                FROM payments
+                WHERE type IS NULL OR type <> 'refund'
+                GROUP BY invoice_id
+            ) AS latest_payment
+                ON latest_payment.invoice_id = invoices.id
+            WHERE {$where}
+            ORDER BY {$sorting['column']} {$sorting['direction']},
+                    invoices.id {$sorting['direction']}
+            LIMIT " . Paginator::perPage() .
+            ' OFFSET ' . Paginator::offset($page),
             $params
         );
+
 
         return $this->view('invoices/index', [
             'title' => 'Invoices',
