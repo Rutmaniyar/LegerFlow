@@ -35,7 +35,7 @@ final class InvoiceController extends Controller
             'Pay_date' => ['column' => 'latest_payment.payment_date', 'default' => 'desc'],
             'amount_paid' => ['column' => 'invoices.amount_paid', 'default' => 'desc'],
             'balance_due' => ['column' => 'invoices.balance_due', 'default' => 'desc'],
-        ], 'issue_date');
+        ], 'payment_date');
         $params = [];
         $where = '1 = 1';
         if ($status !== '') {
