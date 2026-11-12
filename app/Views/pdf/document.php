@@ -17,6 +17,7 @@
 
 $showDiscount = abs((float) ($document['discount_total'] ?? 0)) > 0.00001;
 $showTax = abs((float) ($document['tax_total'] ?? 0)) > 0.00001;
+$taxLabel = document_tax_label($items);
 $isPaid = $isInvoice && ($document['status'] ?? '') === 'paid';
 $currency = (string) ($document['currency'] ?? 'USD');
 $isForeignCurrency = $defaultCurrency !== '' && $currency !== $defaultCurrency;
@@ -95,7 +96,7 @@ if ($logoPath !== '') {
         color: #637487;
         padding: 7pt 8pt;
     }
-    table.items thead th.num { text-align: right; }
+    table.items thead th.num { text-align: right; overflow-wrap: anywhere; }
     table.items tbody td {
         border-bottom: 0.75pt solid #eef2f7;
         padding: 7pt 8pt;
@@ -107,8 +108,8 @@ if ($logoPath !== '') {
     .totals-inner { width: 230pt; float: right; }
     .totals-inner table { width: 100%; border-collapse: collapse; }
     .totals-inner td { padding: 4pt 0; font-size: 9.5pt; }
-    .totals-inner td.label { color: #637487; }
-    .totals-inner td.value { text-align: right; font-weight: bold; }
+    .totals-inner td.label { color: #637487; overflow-wrap: anywhere; }
+    .totals-inner td.value { text-align: right; font-weight: bold; white-space: nowrap; }
     .totals-inner tr.grand td { border-top: 1.25pt solid #111827; padding-top: 8pt; font-size: 11.5pt; }
     .totals-inner tr.grand td.value { color: <?= $rgb('700') ?>; }
     .clearfix { clear: both; }
@@ -215,7 +216,7 @@ if ($logoPath !== '') {
             <th>Description</th>
             <th class="num">Qty</th>
             <th class="num">Unit price</th>
-            <?php if ($showTax): ?><th class="num">Tax</th><?php endif; ?>
+            <?php if ($showTax): ?><th class="num"><?= e($taxLabel) ?></th><?php endif; ?>
             <th class="num">Total</th>
         </tr>
     </thead>
@@ -237,9 +238,9 @@ if ($logoPath !== '') {
         <table>
             <tr><td class="label">Subtotal</td><td class="value"><?= money($document['subtotal'], $currency) ?></td></tr>
             <?php if ($showDiscount): ?><tr><td class="label">Discount</td><td class="value">-<?= money($document['discount_total'], $currency) ?></td></tr><?php endif; ?>
-            <?php if ($showTax): ?><tr><td class="label">Tax</td><td class="value"><?= money($document['tax_total'], $currency) ?></td></tr><?php endif; ?>
+            <?php if ($showTax): ?><tr><td class="label"><?= e($taxLabel) ?></td><td class="value"><?= money($document['tax_total'], $currency) ?></td></tr><?php endif; ?>
             <?php if ($isInvoice): ?>
-                <tr><td class="label">Paid</td><td class="value">-<?= money($document['amount_paid'] ?? 0, $currency) ?></td></tr>
+                <tr><td class="label">Paid</td><td class="value"><?= money(-(float) ($document['amount_paid'] ?? 0), $currency) ?></td></tr>
                 <tr class="grand"><td class="label">Balance due</td><td class="value"><?= money($document['balance_due'] ?? $document['total'], $currency) ?></td></tr>
             <?php else: ?>
                 <tr class="grand"><td class="label">Total</td><td class="value"><?= money($document['total'], $currency) ?></td></tr>

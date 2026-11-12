@@ -1,10 +1,11 @@
 <?php
 $showDiscount = abs((float) ($quote['discount_total'] ?? 0)) > 0.00001;
 $showTax = abs((float) ($quote['tax_total'] ?? 0)) > 0.00001;
+$taxLabel = document_tax_label($items);
 $logoPath = trim((string) ($business['logo_path'] ?? ''));
 ?>
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
-    <div class="card p-6">
+<section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
+    <div class="card min-w-0 p-6">
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex items-start gap-4">
                 <?php if ($logoPath !== ''): ?>
@@ -35,7 +36,7 @@ $logoPath = trim((string) ($business['logo_path'] ?? ''));
 
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><?php if ($showTax): ?><th>Tax</th><?php endif; ?><th class="text-right">Total</th></tr></thead>
+                <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><?php if ($showTax): ?><th><?= e($taxLabel) ?></th><?php endif; ?><th class="text-right">Total</th></tr></thead>
                 <tbody class="divide-y divide-ink-100">
                     <?php foreach ($items as $item): ?>
                         <tr>
@@ -53,7 +54,7 @@ $logoPath = trim((string) ($business['logo_path'] ?? ''));
         <div class="ml-auto mt-6 max-w-sm space-y-2">
             <div class="flex justify-between text-sm"><span>Subtotal</span><strong><?= money($quote['subtotal'], $quote['currency']) ?></strong></div>
             <?php if ($showDiscount): ?><div class="flex justify-between text-sm"><span>Discount</span><strong><?= money($quote['discount_total'], $quote['currency']) ?></strong></div><?php endif; ?>
-            <?php if ($showTax): ?><div class="flex justify-between text-sm"><span>Tax</span><strong><?= money($quote['tax_total'], $quote['currency']) ?></strong></div><?php endif; ?>
+            <?php if ($showTax): ?><div class="flex justify-between gap-3 text-sm"><span class="min-w-0 break-words"><?= e($taxLabel) ?></span><strong class="shrink-0"><?= money($quote['tax_total'], $quote['currency']) ?></strong></div><?php endif; ?>
             <div class="flex justify-between border-t border-ink-200 pt-3 text-lg"><span class="font-black">Total</span><strong><?= money($quote['total'], $quote['currency']) ?></strong></div>
         </div>
 

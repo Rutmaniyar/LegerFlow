@@ -85,9 +85,9 @@ final class RecurringController extends Controller
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO recurring_invoice_items (recurring_invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO recurring_invoice_items (recurring_invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                 );
             }
 
@@ -137,9 +137,9 @@ final class RecurringController extends Controller
                 $items = app()->db()->fetchAll('SELECT * FROM recurring_invoice_items WHERE recurring_invoice_id = ? ORDER BY sort_order', [$recurring['id']]);
                 foreach ($items as $item) {
                     app()->db()->execute(
-                        'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                        'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                     );
                 }
 

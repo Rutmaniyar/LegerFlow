@@ -43,14 +43,18 @@ function assert_not_contains(string $needle, string $haystack, string $label): v
 }
 
 $calculator = new InvoiceCalculator();
+$calculatorTaxes = [
+    ['id' => 1, 'name' => 'VAT', 'rate' => '20.00', 'is_active' => 1],
+    ['id' => 2, 'name' => 'Invalid precision', 'rate' => '20.001', 'is_active' => 1],
+];
 $result = $calculator->fromRequest([
     'item_description' => ['Design', 'Hosting'],
     'item_quantity' => ['2', '1'],
     'item_unit_price' => ['100', '50'],
     'item_discount_type' => ['percent', 'percent'],
     'item_discount_value' => ['10', '0'],
-    'item_tax_rate' => ['20', '0'],
-]);
+    'item_tax_id' => ['1', '0'],
+], $calculatorTaxes);
 
 assert_same(250.0, $result['subtotal'], 'subtotal');
 assert_same(20.0, $result['discount_total'], 'discount total');
@@ -66,8 +70,8 @@ $amountDiscount = $calculator->fromRequest([
     'item_unit_price' => ['100'],
     'item_discount_type' => ['amount'],
     'item_discount_value' => ['25'],
-    'item_tax_rate' => ['20'],
-]);
+    'item_tax_id' => ['1'],
+], $calculatorTaxes);
 assert_same(200.0, $amountDiscount['subtotal'], 'amount discount subtotal');
 assert_same(25.0, $amountDiscount['discount_total'], 'amount discount total');
 assert_same(35.0, $amountDiscount['tax_total'], 'amount discount is applied before tax');
@@ -80,8 +84,8 @@ $invalidDiscounts = $calculator->fromRequest([
     'item_unit_price' => ['100', '100', '10'],
     'item_discount_type' => ['percent', 'percent', 'amount'],
     'item_discount_value' => ['10.001', '101', '10.01'],
-    'item_tax_rate' => ['20', '20.001', '20'],
-]);
+    'item_tax_id' => ['1', '2', '1'],
+], $calculatorTaxes);
 assert_same([], $invalidDiscounts['items'], 'invalid discount and tax precision is rejected');
 assert_same(4, count($invalidDiscounts['errors']), 'discount validation reports each invalid rule');
 
@@ -89,7 +93,7 @@ $empty = $calculator->fromRequest([
     'item_description' => [''],
     'item_quantity' => ['1'],
     'item_unit_price' => ['100'],
-]);
+], $calculatorTaxes);
 assert_same([], $empty['items'], 'empty lines ignored');
 assert_same('20%', percentage('20.00'), 'whole percentage formatting');
 assert_same('20.5%', percentage('20.50'), 'single-decimal percentage formatting');
@@ -112,7 +116,7 @@ assert_same('issue_date', TableSort::resolve('client', 'sideways', $sortColumns,
 assert_same(true, TableSort::resolve('valid_until', 'asc', $sortColumns, 'issue_date')['nulls_last'], 'nullable date sort retains nulls-last behavior');
 
 $registerSortKeys = [
-    'invoices' => ['invoice_number', 'client', 'status', 'issue_date', 'due_date', 'amount_paid', 'balance_due'],
+    'invoices' => ['invoice_number', 'client', 'status', 'issue_date', 'payment_date', 'amount_paid', 'balance_due'],
     'quotes' => ['quote_number', 'client', 'status', 'issue_date', 'valid_until', 'total'],
     'expenses' => ['expense_date', 'vendor', 'category', 'amount'],
 ];
@@ -130,7 +134,7 @@ foreach ($registerSortKeys as $register => $keys) {
 $invoiceController = (string) file_get_contents(APP_PATH . '/Http/Controllers/InvoiceController.php');
 $quoteController = (string) file_get_contents(APP_PATH . '/Http/Controllers/QuoteController.php');
 $expenseController = (string) file_get_contents(APP_PATH . '/Http/Controllers/ExpenseController.php');
-assert_contains("invoices.id {\$sorting['direction']}", $invoiceController, 'invoice sorting has a stable id tie-breaker');
+assert_contains('invoices.id DESC', $invoiceController, 'invoice sorting has a stable id tie-breaker');
 assert_contains("quotes.id {\$sorting['direction']}", $quoteController, 'quote sorting has a stable id tie-breaker');
 assert_contains("expenses.id ' . \$sorting['direction']", $expenseController, 'expense sorting has a stable id tie-breaker');
 assert_contains('IS NULL ASC', $quoteController, 'undated quote validity values sort last');
@@ -157,19 +161,19 @@ $taxes = [
 ob_start();
 View::partial('partials/line-item-row', ['taxes' => $taxes, 'defaultTax' => $taxes[0]]);
 $defaultTaxLine = (string) ob_get_clean();
-assert_contains('value="20.00" selected', $defaultTaxLine, 'new line item preselects the active default tax');
+assert_contains('value="1" selected', $defaultTaxLine, 'new line item preselects the active default tax');
 assert_not_contains('Reduced · 5% · Inactive', $defaultTaxLine, 'new line item excludes inactive taxes');
 
 ob_start();
 View::partial('partials/line-item-row', [
     'taxes' => $taxes,
     'defaultTax' => $taxes[0],
-    'item' => ['discount_type' => 'amount', 'discount_value' => '12.5', 'tax_rate' => '5.00'],
+    'item' => ['id' => 91, 'discount_type' => 'amount', 'discount_value' => '12.5', 'tax_rate' => '5.00', 'tax_name' => 'Reduced'],
 ]);
 $historicTaxLine = (string) ob_get_clean();
 assert_contains('value="amount" selected', $historicTaxLine, 'saved amount discount overrides the default type');
 assert_contains('value="12.50" data-discount-value', $historicTaxLine, 'saved amount discount renders in document currency precision');
-assert_contains('value="5.00" selected', $historicTaxLine, 'saved inactive tax overrides the current default');
+assert_contains('value="saved:91" selected', $historicTaxLine, 'saved inactive tax overrides the current default');
 assert_contains('Reduced · 5% · Inactive', $historicTaxLine, 'saved inactive tax stays visible on a draft');
 
 $currencyToken = SignedOption::seal('currency', 'USD');
@@ -240,7 +244,8 @@ $baseInvoice = [
     'terms' => null,
 ];
 
-$zeroAdjustmentPdf = $render->invoke(new PdfService(), ['business_name' => 'Acme'], $baseInvoice, [[
+$htmlBusiness = ['business_name' => 'Acme', 'brand_color' => '#0ea394', 'default_currency' => 'USD', 'phone' => ''];
+$zeroAdjustmentPdf = $render->invoke(new PdfService(), $htmlBusiness, $baseInvoice, [[
     'description' => 'Service',
     'quantity' => '1',
     'unit_price' => '100.00',
@@ -250,8 +255,9 @@ $zeroAdjustmentPdf = $render->invoke(new PdfService(), ['business_name' => 'Acme
 assert_contains('%PDF-1.4', $zeroAdjustmentPdf, 'PDF has a valid header');
 assert_not_contains('(Discount)', $zeroAdjustmentPdf, 'PDF omits zero discount row');
 assert_not_contains('(Tax)', $zeroAdjustmentPdf, 'PDF omits zero tax row and item tax column');
+assert_not_contains('(-0.00 USD)', $zeroAdjustmentPdf, 'PDF shows an unpaid amount as zero');
 
-$nonZeroAdjustmentPdf = $render->invoke(new PdfService(), ['business_name' => 'Acme'], array_merge($baseInvoice, [
+$nonZeroAdjustmentPdf = $render->invoke(new PdfService(), $htmlBusiness, array_merge($baseInvoice, [
     'invoice_number' => 'INV-002',
     'discount_total' => '5.00',
     'tax_total' => '9.50',
@@ -270,7 +276,7 @@ assert_contains('(Tax)', $nonZeroAdjustmentPdf, 'PDF includes non-zero tax row')
 assert_contains('(9.50 USD)', $nonZeroAdjustmentPdf, 'PDF includes formatted tax amount');
 assert_contains('(10%)', $nonZeroAdjustmentPdf, 'PDF includes item tax percentage when document tax is non-zero');
 
-$paidInvoicePdf = $render->invoke(new PdfService(), ['business_name' => 'Acme'], array_merge($baseInvoice, [
+$paidInvoicePdf = $render->invoke(new PdfService(), $htmlBusiness, array_merge($baseInvoice, [
     'status' => 'paid',
     'paid_at' => '2026-06-01 10:00:00',
     'amount_paid' => '100.00',
@@ -291,7 +297,6 @@ assert_contains('(PAID)', $paidInvoicePdf, 'PDF includes a PAID stamp for paid i
 assert_contains('(PAYMENT HISTORY)', $paidInvoicePdf, 'PDF includes payment history for invoices with payments');
 assert_contains('(Bank transfer)', $paidInvoicePdf, 'PDF lists each recorded payment method');
 
-$htmlBusiness = ['business_name' => 'Acme', 'brand_color' => '#0ea394', 'default_currency' => 'USD'];
 $htmlInvoice = array_merge($baseInvoice, ['status' => 'paid', 'paid_at' => '2026-06-01 10:00:00', 'amount_paid' => '100.00', 'balance_due' => '0.00']);
 ob_start();
 $html = View::render('pdf/document', [
@@ -323,6 +328,8 @@ $foreignCurrencyHtml = View::render('pdf/document', [
 ], '');
 ob_end_clean();
 assert_contains('Billed in GBP', $foreignCurrencyHtml, 'HTML template flags an invoice currency different from the business default');
+
+require __DIR__ . '/tax-names.php';
 
 if ($failures > 0) {
     exit(1);

@@ -8,14 +8,17 @@ final class InvoiceCalculator
 {
     private const MAX_ITEMS = 200;
 
-    public function fromRequest(array $data): array
+    public function fromRequest(array $data, ?array $taxDefinitions = null, array $savedItems = []): array
     {
         $descriptions = array_slice((array) ($data['item_description'] ?? []), 0, self::MAX_ITEMS, true);
         $quantities = (array) ($data['item_quantity'] ?? []);
         $prices = (array) ($data['item_unit_price'] ?? []);
         $discountTypes = (array) ($data['item_discount_type'] ?? []);
         $discountValues = (array) ($data['item_discount_value'] ?? []);
-        $taxes = (array) ($data['item_tax_rate'] ?? []);
+        $taxIds = (array) ($data['item_tax_id'] ?? []);
+        $taxDefinitions ??= app()->db()->fetchAll('SELECT id, name, rate, is_active FROM taxes');
+        $taxDefinitions = array_column($taxDefinitions, null, 'id');
+        $savedItems = array_column($savedItems, null, 'id');
 
         $items = [];
         $errors = [];
@@ -31,12 +34,30 @@ final class InvoiceCalculator
             }
 
             $lineNumber++;
+            $selection = $taxIds[$index] ?? null;
+            $selection = is_string($selection) || is_int($selection) ? (string) $selection : '';
+            $taxRate = 0;
+            $taxName = null;
+            if ($selection !== '0') {
+                if (preg_match('/^[1-9]\d*$/D', $selection) && !empty($taxDefinitions[$selection]['is_active'])) {
+                    $taxRate = $taxDefinitions[$selection]['rate'];
+                    $taxName = (string) $taxDefinitions[$selection]['name'];
+                } elseif (preg_match('/^saved:([1-9]\d*)$/D', $selection, $match) && isset($savedItems[$match[1]])) {
+                    // Resolve historical selections only from this document's persisted lines.
+                    $taxRate = $savedItems[$match[1]]['tax_rate'];
+                    $taxName = $savedItems[$match[1]]['tax_name'] ?? null;
+                    unset($savedItems[$match[1]]);
+                } else {
+                    $errors[] = "Line {$lineNumber} ({$description}): Choose an available tax or No tax.";
+                    continue;
+                }
+            }
             $discountType = (string) ($discountTypes[$index] ?? 'percent');
             $fields = [
                 'Quantity' => $quantities[$index] ?? 1,
                 'Unit price' => $prices[$index] ?? 0,
                 'Discount' => $discountValues[$index] ?? 0,
-                'Tax rate' => $taxes[$index] ?? 0,
+                'Tax rate' => $taxRate,
             ];
 
             $invalid = !in_array($discountType, ['percent', 'amount'], true);
@@ -104,6 +125,7 @@ final class InvoiceCalculator
                 'discount_type' => $discountType,
                 'discount_value' => $discountValue,
                 'tax_rate' => $taxRate,
+                'tax_name' => $taxName,
                 'line_total' => $lineTotal,
                 'sort_order' => count($items),
             ];

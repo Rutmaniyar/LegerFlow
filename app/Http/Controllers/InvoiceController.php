@@ -170,7 +170,10 @@ public function index(Request $request): string
             $errors['client_id'] = 'Selected client was not found.';
         }
 
-        $calculated = (new InvoiceCalculator())->fromRequest($data);
+        $calculated = (new InvoiceCalculator())->fromRequest(
+            $data,
+            savedItems: app()->db()->fetchAll('SELECT id, tax_rate, tax_name FROM invoice_items WHERE invoice_id = ?', [(int) $id])
+        );
         if ($calculated['errors'] !== []) {
             $errors['items'] = implode(' ', $calculated['errors']);
         } elseif ($calculated['items'] === []) {
@@ -207,9 +210,9 @@ public function index(Request $request): string
             app()->db()->execute('DELETE FROM invoice_items WHERE invoice_id = ?', [(int) $id]);
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                 );
             }
         });
@@ -328,9 +331,9 @@ public function index(Request $request): string
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$invoiceId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                 );
             }
 

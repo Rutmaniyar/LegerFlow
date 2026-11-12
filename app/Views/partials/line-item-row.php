@@ -7,9 +7,30 @@ $discountValue = (float) ($item['discount_value'] ?? $item['discount_rate'] ?? 0
 $discountDisplay = $discountType === 'amount'
     ? number_format($discountValue, 2, '.', '')
     : rtrim(rtrim(number_format($discountValue, 2, '.', ''), '0'), '.');
-$hasSavedTax = array_key_exists('tax_rate', $item);
 $savedTaxRate = (float) ($item['tax_rate'] ?? 0);
-$taxSelected = false;
+$savedTaxName = trim((string) ($item['tax_name'] ?? ''));
+$savedKey = isset($item['id']) && ($savedTaxRate > 0 || $savedTaxName !== '') ? 'saved:' . $item['id'] : null;
+$savedLabel = ($savedTaxName !== '' ? $savedTaxName : 'Saved tax') . ' · ' . percentage($savedTaxRate);
+$taxSelection = isset($item['tax_rate']) ? ($savedKey ?? '0') : (string) ($defaultTax['id'] ?? 0);
+$taxOptions = ['0' => 'No tax · 0%'];
+foreach ($taxes as $tax) {
+    $matchesSnapshot = $savedKey !== null && $savedTaxName === $tax['name'] && $savedTaxRate === (float) $tax['rate'];
+    if ($tax['is_active']) {
+        $taxOptions[$tax['id']] = $tax['name'] . ' · ' . percentage($tax['rate']);
+        if ($matchesSnapshot) {
+            $taxSelection = (string) $tax['id'];
+        }
+    } elseif ($matchesSnapshot) {
+        $savedLabel .= ' · Inactive';
+    }
+}
+$taxSelection = $item['tax_selection'] ?? $taxSelection;
+if ($savedKey !== null && $taxSelection === $savedKey) {
+    $taxOptions[$savedKey] = $savedLabel;
+} elseif (!array_key_exists($taxSelection, $taxOptions)) {
+    $taxSelection = '';
+    $taxOptions[''] = 'Unavailable tax — choose another';
+}
 ?>
 <div class="grid gap-3 rounded-lg border border-ink-100 bg-ink-50 p-3 md:grid-cols-[1.6fr_0.55fr_0.8fr_1.1fr_0.75fr_auto]" data-line-row>
     <label>
@@ -35,25 +56,11 @@ $taxSelected = false;
         </span>
     </label>
     <label>
-        <span class="label">Tax %</span>
-        <select class="field" name="item_tax_rate[]">
-            <option value="0" <?= ($hasSavedTax && $savedTaxRate === 0.0) || (!$hasSavedTax && !$defaultTax) ? 'selected' : '' ?>>0%</option>
-            <?php foreach ($taxes as $tax): ?>
-                <?php
-                $matchesSavedTax = $hasSavedTax && !$taxSelected && $savedTaxRate === (float) $tax['rate'];
-                if (!$tax['is_active'] && !$matchesSavedTax) {
-                    continue;
-                }
-                $selected = $matchesSavedTax || (!$hasSavedTax && (int) ($defaultTax['id'] ?? 0) === (int) $tax['id']);
-                if ($selected) {
-                    $taxSelected = true;
-                }
-                ?>
-                <option value="<?= e($tax['rate']) ?>" <?= $selected ? 'selected' : '' ?>><?= e($tax['name']) ?> · <?= percentage($tax['rate']) ?><?= $tax['is_active'] ? '' : ' · Inactive' ?></option>
+        <span class="label">Tax</span>
+        <select class="field" name="item_tax_id[]" required>
+            <?php foreach ($taxOptions as $key => $label): ?>
+                <option value="<?= e($key) ?>" <?= $taxSelection === (string) $key ? 'selected' : '' ?>><?= e($label) ?></option>
             <?php endforeach; ?>
-            <?php if ($hasSavedTax && $savedTaxRate !== 0.0 && !$taxSelected): ?>
-                <option value="<?= e($savedTaxRate) ?>" selected>Saved tax · <?= percentage($savedTaxRate) ?></option>
-            <?php endif; ?>
         </select>
     </label>
     <div class="flex items-end">

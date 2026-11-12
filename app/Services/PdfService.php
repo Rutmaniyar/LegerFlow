@@ -180,7 +180,7 @@ final class PdfService
     private function legacyRender(array $business, array $document, array $items, array $payments, string $numberKey, bool $isInvoice): string
     {
         $currency = (string) ($document['currency'] ?? 'USD');
-        $showTax = $this->hasAmount($document['tax_total'] ?? 0);
+        $taxLabel = $this->hasAmount($document['tax_total'] ?? 0) ? document_tax_label($items) : null;
         $showDiscount = $this->hasAmount($document['discount_total'] ?? 0);
         $isPaid = $isInvoice && ($document['status'] ?? '') === 'paid';
         $brandRgb = $this->hexToUnitRgb((string) ($business['brand_color'] ?? '#0ea394'));
@@ -262,11 +262,11 @@ final class PdfService
         }
 
         $y += 26;
-        [$tableOps, $y] = $this->itemsTable($y, $items, $currency, $showTax, $brandRgb);
+        [$tableOps, $y] = $this->itemsTable($y, $items, $currency, $taxLabel, $brandRgb);
         $ops = array_merge($ops, $tableOps);
 
         $y += 14;
-        [$totalsOps, $y] = $this->totalsBox($y, $document, $currency, $showDiscount, $showTax, $isInvoice);
+        [$totalsOps, $y] = $this->totalsBox($y, $document, $currency, $showDiscount, $taxLabel, $isInvoice);
         $ops = array_merge($ops, $totalsOps);
 
         if ($isInvoice && $payments !== []) {
@@ -395,7 +395,7 @@ final class PdfService
     }
 
     /** @return array{0: array<int, string>, 1: float} */
-    private function itemsTable(float $y, array $items, string $currency, bool $showTax, array $brandRgb): array
+    private function itemsTable(float $y, array $items, string $currency, ?string $taxLabel, array $brandRgb): array
     {
         $left = self::MARGIN;
         $right = self::PAGE_WIDTH - self::MARGIN;
@@ -404,19 +404,21 @@ final class PdfService
         $priceX = $left + 320;
         $taxX = $left + 390;
         $totalX = $right - 6;
+        $taxHeadingLines = $taxLabel !== null ? $this->wrapLines($taxLabel, 12) : [];
+        $headerHeight = max(22, 12 + 10 * count($taxHeadingLines));
 
         $ops = [];
-        $ops[] = $this->rect($left, $y, $right - $left, 22, [0.95, 0.97, 0.98]);
+        $ops[] = $this->rect($left, $y, $right - $left, $headerHeight, [0.95, 0.97, 0.98]);
         $headerY = $y + 15;
         $ops[] = $this->text($descX, $headerY, 'F2', 8, 'DESCRIPTION', [0.39, 0.45, 0.53]);
         $ops[] = $this->text($qtyX, $headerY, 'F2', 8, 'QTY', [0.39, 0.45, 0.53]);
         $ops[] = $this->text($priceX, $headerY, 'F2', 8, 'UNIT PRICE', [0.39, 0.45, 0.53]);
-        if ($showTax) {
-            $ops[] = $this->text($taxX, $headerY, 'F2', 8, 'TAX', [0.39, 0.45, 0.53]);
+        foreach ($taxHeadingLines as $index => $headingLine) {
+            $ops[] = $this->text($taxX, $headerY + $index * 10, 'F2', 8, $headingLine, [0.39, 0.45, 0.53]);
         }
         $ops[] = $this->text($totalX, $headerY, 'F2', 8, 'TOTAL', [0.39, 0.45, 0.53], true);
 
-        $y += 22;
+        $y += $headerHeight;
         foreach ($items as $item) {
             $descLines = $this->wrapLines((string) $item['description'], 46);
             $rowHeight = max(20, 13 * count($descLines) + 7);
@@ -427,7 +429,7 @@ final class PdfService
             }
             $ops[] = $this->text($qtyX, $rowTop + 14, 'F1', 9, (string) $this->trimNumber((float) $item['quantity']), [0.13, 0.15, 0.20]);
             $ops[] = $this->text($priceX, $rowTop + 14, 'F1', 9, money($item['unit_price'], $currency), [0.13, 0.15, 0.20]);
-            if ($showTax) {
+            if ($taxLabel !== null) {
                 $ops[] = $this->text($taxX, $rowTop + 14, 'F1', 9, percentage($item['tax_rate']), [0.13, 0.15, 0.20]);
             }
             $ops[] = $this->text($totalX, $rowTop + 14, 'F2', 9, money($item['line_total'], $currency), [0.13, 0.15, 0.20], true);
@@ -440,7 +442,7 @@ final class PdfService
     }
 
     /** @return array{0: array<int, string>, 1: float} */
-    private function totalsBox(float $y, array $document, string $currency, bool $showDiscount, bool $showTax, bool $isInvoice): array
+    private function totalsBox(float $y, array $document, string $currency, bool $showDiscount, ?string $taxLabel, bool $isInvoice): array
     {
         $right = self::PAGE_WIDTH - self::MARGIN;
         $labelX = $right - 180;
@@ -451,11 +453,11 @@ final class PdfService
         if ($showDiscount) {
             $rows[] = ['Discount', '-' . money($document['discount_total'], $currency), false];
         }
-        if ($showTax) {
-            $rows[] = ['Tax', money($document['tax_total'], $currency), false];
+        if ($taxLabel !== null) {
+            $rows[] = [$taxLabel, money($document['tax_total'], $currency), false];
         }
         if ($isInvoice) {
-            $rows[] = ['Paid', '-' . money($document['amount_paid'] ?? 0, $currency), false];
+            $rows[] = ['Paid', money(-(float) ($document['amount_paid'] ?? 0), $currency), false];
             $rows[] = ['Balance due', money($document['balance_due'] ?? $document['total'], $currency), true];
         } else {
             $rows[] = ['Total', money($document['total'], $currency), true];
@@ -466,8 +468,12 @@ final class PdfService
             if ($emphasis) {
                 $ops[] = $this->line($labelX - 10, $y - 13, $right, $y - 13, [0.85, 0.88, 0.92], 0.75);
             }
-            $ops[] = $this->text($labelX, $y, $emphasis ? 'F2' : 'F1', $emphasis ? 11 : 9, $label, [0.21, 0.24, 0.30]);
+            $labelLines = $this->wrapLines($label, 18);
+            foreach ($labelLines as $index => $labelLine) {
+                $ops[] = $this->text($labelX, $y + $index * 12, $emphasis ? 'F2' : 'F1', $emphasis ? 11 : 9, $labelLine, [0.21, 0.24, 0.30]);
+            }
             $ops[] = $this->text($valueX, $y, $emphasis ? 'F2' : 'F1', $emphasis ? 11 : 9, $value, [0.07, 0.09, 0.15], true);
+            $y += (count($labelLines) - 1) * 12;
         }
 
         return [$ops, $y];
@@ -584,6 +590,7 @@ final class PdfService
             if ($paragraph === '') {
                 continue;
             }
+            $paragraph = preg_replace('/(\S{' . $maxChars . '})(?=\S)/u', '$1 ', $paragraph) ?? $paragraph;
             $line = '';
             foreach (explode(' ', $paragraph) as $word) {
                 $candidate = $line === '' ? $word : $line . ' ' . $word;

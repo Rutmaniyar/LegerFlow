@@ -1,11 +1,12 @@
 <?php
 $showDiscount = abs((float) ($invoice['discount_total'] ?? 0)) > 0.00001;
 $showTax = abs((float) ($invoice['tax_total'] ?? 0)) > 0.00001;
+$taxLabel = document_tax_label($items);
 $logoPath = trim((string) ($business['logo_path'] ?? ''));
 $canSendReminder = !in_array((string) $invoice['status'], ['draft', 'paid', 'void'], true) && (float) ($invoice['balance_due'] ?? 0) > 0;
 ?>
-<section class="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
-    <div class="card p-6">
+<section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.4fr_0.8fr]" data-motion="fade-up" data-motion-stagger>
+    <div class="card min-w-0 p-6">
         <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex items-start gap-4">
                 <?php if ($logoPath !== ''): ?>
@@ -63,7 +64,7 @@ $canSendReminder = !in_array((string) $invoice['status'], ['draft', 'paid', 'voi
 
         <div class="mt-6 table-wrap">
             <table class="data-table">
-                <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><?php if ($showTax): ?><th>Tax</th><?php endif; ?><th class="text-right">Total</th></tr></thead>
+                <thead><tr><th>Description</th><th>Qty</th><th>Unit</th><?php if ($showTax): ?><th><?= e($taxLabel) ?></th><?php endif; ?><th class="text-right">Total</th></tr></thead>
                 <tbody class="divide-y divide-ink-100">
                     <?php foreach ($items as $item): ?>
                         <tr>
@@ -81,7 +82,7 @@ $canSendReminder = !in_array((string) $invoice['status'], ['draft', 'paid', 'voi
         <div class="ml-auto mt-6 max-w-sm space-y-2">
             <div class="flex justify-between text-sm"><span>Subtotal</span><strong><?= money($invoice['subtotal'], $invoice['currency']) ?></strong></div>
             <?php if ($showDiscount): ?><div class="flex justify-between text-sm"><span>Discount</span><strong><?= money($invoice['discount_total'], $invoice['currency']) ?></strong></div><?php endif; ?>
-            <?php if ($showTax): ?><div class="flex justify-between text-sm"><span>Tax</span><strong><?= money($invoice['tax_total'], $invoice['currency']) ?></strong></div><?php endif; ?>
+            <?php if ($showTax): ?><div class="flex justify-between gap-3 text-sm"><span class="min-w-0 break-words"><?= e($taxLabel) ?></span><strong class="shrink-0"><?= money($invoice['tax_total'], $invoice['currency']) ?></strong></div><?php endif; ?>
             <div class="flex justify-between text-sm"><span>Paid</span><strong><?= money($invoice['amount_paid'], $invoice['currency']) ?></strong></div>
             <div class="flex justify-between border-t border-ink-200 pt-3 text-lg"><span class="font-black">Balance due</span><strong><?= money($invoice['balance_due'], $invoice['currency']) ?></strong></div>
         </div>

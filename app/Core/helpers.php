@@ -67,6 +67,19 @@ function percentage(mixed $amount): string
     return rtrim(rtrim(number_format((float) $amount, 2), '0'), '.') . '%';
 }
 
+function document_tax_label(array $items): string
+{
+    $names = [];
+    foreach ($items as $item) {
+        if ((float) ($item['tax_rate'] ?? 0) > 0) {
+            $name = trim((string) ($item['tax_name'] ?? ''));
+            $names[] = $name !== '' ? $name : 'Tax';
+        }
+    }
+
+    return count(array_unique($names)) === 1 ? $names[0] : 'Tax';
+}
+
 function currency_symbol(string $code): string
 {
     foreach (\App\Support\ReferenceData::currencies() as $currency) {
@@ -153,18 +166,23 @@ function old_line_items(array $fallback = []): array
     $prices = (array) old('item_unit_price', []);
     $discountTypes = (array) old('item_discount_type', []);
     $discountValues = (array) old('item_discount_value', []);
-    $taxRates = (array) old('item_tax_rate', []);
+    $taxSelections = (array) old('item_tax_id', []);
+    $savedItems = array_column($fallback, null, 'id');
     $items = [];
 
     foreach (array_slice($descriptions, 0, 200, true) as $index => $description) {
-        $items[] = [
+        $selection = $taxSelections[$index] ?? '';
+        $selection = is_string($selection) || is_int($selection) ? (string) $selection : '';
+        $savedItem = preg_match('/^saved:([1-9]\d*)$/D', $selection, $match)
+            ? ($savedItems[$match[1]] ?? []) : [];
+        $items[] = array_merge($savedItem, [
             'description' => $description,
             'quantity' => $quantities[$index] ?? '1',
             'unit_price' => $prices[$index] ?? '0.00',
             'discount_type' => $discountTypes[$index] ?? 'percent',
             'discount_value' => $discountValues[$index] ?? '0',
-            'tax_rate' => $taxRates[$index] ?? '0',
-        ];
+            'tax_selection' => $selection,
+        ]);
     }
 
     return $items;

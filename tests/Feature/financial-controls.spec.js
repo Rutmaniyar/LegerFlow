@@ -19,9 +19,9 @@ async function mountFinancialControls(page) {
             </label>
             <label>Discount value <input name="item_discount_value[]" type="number" data-discount-value></label>
             <label>Tax
-              <select name="item_tax_rate[]">
-                <option value="0">0%</option><option value="20" selected>VAT · 20%</option>
-                <option value="5">Reduced · 5% · Inactive</option>
+              <select name="item_tax_id[]">
+                <option value="0">No tax · 0%</option><option value="1" selected>VAT · 20%</option>
+                <option value="saved:91">Reduced · 5% · Inactive</option>
               </select>
             </label>
           </div>
@@ -35,7 +35,7 @@ async function mountFinancialControls(page) {
             </label>
             <label>Discount value <input name="item_discount_value[]" type="number" data-discount-value></label>
             <label>Tax
-              <select name="item_tax_rate[]"><option value="0">0%</option><option value="20" selected>VAT · 20%</option></select>
+              <select name="item_tax_id[]"><option value="0">No tax · 0%</option><option value="1" selected>VAT · 20%</option></select>
             </label>
           </div>
         </template>
@@ -67,7 +67,7 @@ test.describe('financial register controls', () => {
 
     await page.getByRole('button', { name: 'Add line' }).click();
     const addedRow = page.locator('[data-line-row]').nth(1);
-    await expect(addedRow.locator('[name="item_tax_rate[]"]')).toHaveValue('20');
+    await expect(addedRow.locator('[name="item_tax_id[]"]')).toHaveValue('1');
     await expect(addedRow.locator('[data-discount-value]')).toHaveAttribute('max', '100');
     await expect(firstRow.getByRole('option', { name: /Inactive/ })).toHaveCount(1);
   });

@@ -162,9 +162,9 @@ final class QuoteController extends Controller
 
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [$quoteId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [$quoteId, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                 );
             }
 
@@ -253,7 +253,10 @@ final class QuoteController extends Controller
             ->required('currency', 'Currency')
             ->in('status', ['draft', 'sent'], 'Status');
 
-        $calculated = (new InvoiceCalculator())->fromRequest($data);
+        $calculated = (new InvoiceCalculator())->fromRequest(
+            $data,
+            savedItems: app()->db()->fetchAll('SELECT id, tax_rate, tax_name FROM quote_items WHERE quote_id = ?', [(int) $id])
+        );
         $errors = $validator->errors();
         if ($calculated['errors'] !== [] || $calculated['items'] === []) {
             $errors['items'] = $calculated['errors'] !== []
@@ -290,9 +293,9 @@ final class QuoteController extends Controller
             app()->db()->execute('DELETE FROM quote_items WHERE quote_id = ?', [(int) $id]);
             foreach ($calculated['items'] as $item) {
                 app()->db()->execute(
-                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, line_total, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['line_total'], $item['sort_order']]
+                    'INSERT INTO quote_items (quote_id, description, quantity, unit_price, discount_type, discount_value, tax_rate, tax_name, line_total, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [(int) $id, $item['description'], $item['quantity'], $item['unit_price'], $item['discount_type'], $item['discount_value'], $item['tax_rate'], $item['tax_name'], $item['line_total'], $item['sort_order']]
                 );
             }
         });
